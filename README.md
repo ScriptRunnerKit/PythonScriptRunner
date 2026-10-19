@@ -4,8 +4,8 @@ Biblioteca .NET 10 para executar Python de forma tipada, encadeável e observáv
 com contrato de entrada/saída, trilhas (**Pipelines**), execução assíncrona com RabbitMQ, agendamento
 cron e painel Vue opcional.
 
-> Projeto em desenvolvimento. Esta versão entrega o **Core Runner** (execução síncrona de Stages) e o
-> SDK Python **`psrunner`**.
+> Projeto em desenvolvimento. Esta versão entrega o **Core Runner** (execução síncrona de Stages e de
+> trilhas) e o SDK Python **`psrunner`**.
 
 ## Como funciona
 
@@ -56,6 +56,39 @@ double[] termos = result.GetOutput<double[]>("termos");   // [1, 2, 4, 8]
 Stages também podem ser definidos em C# (`AddStage("chave", s => s.Script(...).Input(...).Output(...))`)
 e testados localmente com pytest pelo `psrunner.testing.run_stage`, sem .NET.
 
+## Trilhas (pipelines)
+
+Uma trilha encadeia Stages em ordem. Cada entrada de um passo recebe a entrada da trilha
+(`$pipeline.campo`), a saída de qualquer passo anterior (`$steps.passo.campo`) ou um valor fixo
+(`{"const": ...}`). Sem ligação explícita, vale o campo de mesmo nome do passo anterior. A trilha
+declara as próprias saídas. Tipos e ligações são validados ao carregar o catálogo.
+
+```jsonc
+// pipelines/calculo-progressao.pipeline.json
+{
+  "key": "calculo-progressao", "version": 1, "name": "Cálculo de progressão",
+  "inputs": [ { "name": "a1", "type": "number" }, { "name": "razao", "type": "number" },
+              { "name": "n", "type": "integer" }, { "name": "coeficientes", "type": "list", "itemType": "number" } ],
+  "steps": [
+    { "key": "termos", "stage": "progressao-termos@1" },
+    { "key": "polinomio", "stage": "polinomio-avaliar@1",
+      "bindings": { "coeficientes": "$pipeline.coeficientes", "x": "$steps.termos.termos" } },
+    { "key": "estatisticas", "stage": "estatisticas@1", "bindings": { "valores": "$steps.polinomio.valores" } }
+  ],
+  "outputs": [ { "name": "soma", "source": "$steps.estatisticas.soma" } ]
+}
+```
+
+```csharp
+await using var result = await runner.RunPipelineAsync("calculo-progressao",
+    new { a1 = 1, razao = 2, n = 4, coeficientes = new[] { 1.0, 0.0, 1.0 } });
+double soma = result.GetOutput<double>("soma");
+double[] termos = result.GetStepOutput<double[]>("termos", "termos");   // depuração
+```
+
+A mesma trilha pode ser definida em C# com `AddPipeline("chave", p => p.Input(...).Step(...).Output(...))`.
+Se um passo falhar, os seguintes ficam como `Skipped` e a execução termina `Failed`.
+
 ## Requisitos
 
 - .NET 10 SDK
@@ -68,8 +101,8 @@ e testados localmente com pytest pelo `psrunner.testing.run_stage`, sem .NET.
 | `src/PythonScriptRunner.Abstractions` | contratos públicos (tipos de campo, `StageDefinition`, `RunResult`, `PsrFile`, interfaces) |
 | `src/PythonScriptRunner.Core` | catálogos (código e pasta), validação, ambientes uv, executor de processos, runner |
 | `python/psrunner` | SDK Python (`@stage`, `Context`, `File`, `StageError`, `psrunner.testing`, CLI) |
-| `schemas` | JSON Schema do `stage.json` |
-| `tests` | testes .NET (unitários e de integração com Python real) |
+| `schemas` | JSON Schemas do `stage.json` e do `*.pipeline.json` |
+| `tests` | testes .NET (unitários e de integração com Python real) e fixtures de trilha |
 
 ## Desenvolvimento
 
