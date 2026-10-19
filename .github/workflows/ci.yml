@@ -33,7 +33,7 @@ jobs:
           global-json-file: global.json
 
       # The integration tests build the psrunner wheel and create real Python environments with uv.
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0
 
       - name: Restore
         run: dotnet restore
@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           python-version: ${{ matrix.python }}
 
