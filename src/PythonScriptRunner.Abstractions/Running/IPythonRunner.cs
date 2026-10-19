@@ -1,6 +1,6 @@
 namespace PythonScriptRunner;
 
-/// <summary>Runs stages synchronously in the current process (one Python process per attempt).</summary>
+/// <summary>Runs stages and pipelines synchronously in the current process (one Python process per attempt).</summary>
 public interface IPythonRunner
 {
     /// <summary>Runs a published stage and waits for its result.</summary>
@@ -14,6 +14,18 @@ public interface IPythonRunner
     /// <exception cref="InputValidationException">The inputs do not match the contract (no run is created).</exception>
     Task<RunResult> RunStageAsync(
         string stageKey, object? inputs, RunOptions? options = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Runs a published pipeline step by step and waits for its result.</summary>
+    /// <param name="pipelineKey">Pipeline key.</param>
+    /// <param name="inputs">Pipeline inputs (same forms as <see cref="RunStageAsync"/>).</param>
+    /// <param name="options">Version, idempotency key and caller identity.</param>
+    /// <param name="cancellationToken">Cancels the run (the running step is stopped; the next ones are skipped).</param>
+    /// <returns>The result with the declared pipeline outputs; failures are reported in <see cref="RunResult.Status"/>.</returns>
+    /// <exception cref="PipelineNotFoundException">The pipeline does not exist.</exception>
+    /// <exception cref="VersionNotFoundException">The requested version does not exist.</exception>
+    /// <exception cref="InputValidationException">The inputs do not match the pipeline contract (no run is created).</exception>
+    Task<RunResult> RunPipelineAsync(
+        string pipelineKey, object? inputs, RunOptions? options = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Options of one run.</summary>

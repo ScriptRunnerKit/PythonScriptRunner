@@ -1,15 +1,20 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PythonScriptRunner.Core.Diagnostics;
 using PythonScriptRunner.Core.Execution;
+using PythonScriptRunner.Core.Pipelines;
 using PythonScriptRunner.Core.Values;
 
 namespace PythonScriptRunner.Core.Running;
 
-/// <summary>Runs stages in the current process: validation, secrets, environment, attempts with retry.</summary>
+/// <summary>
+/// Runs stages and pipelines in the current process: validation, secrets, environment,
+/// attempts with retry and, for pipelines, bindings between steps.
+/// </summary>
 internal sealed class PythonRunner : IPythonRunner, IDisposable
 {
     private readonly ICatalog _catalog;
@@ -76,35 +81,26 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
         var bound = InputBinder.Bind(stage.Inputs, inputs, settings.MaxFileBytes);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var runId = RunId.New();
-        var started = _time.GetTimestamp();
-        await _recorder.RunStartedAsync(
-            new RunStarted(runId, RunKind.Stage, stage.Key, stage.Version, options?.TriggeredBy ?? "system:library", _time.GetUtcNow(), (JsonObject)bound.Wire.DeepClone()),
-            cancellationToken).ConfigureAwait(false);
+        return await RunAsync(RunKind.Stage, stage.Key, stage.Version, bound, options, settings, async (context, inputFiles) =>
+        {
+            var step = await ExecuteStepAsync(stage, stage.Key, 1, bound.Wire, ToCopies(inputFiles), context, cancellationToken).ConfigureAwait(false);
+            return new RunOutcome(StatusOf(step.Status), [step], step.Outputs, step.Files, step.Error);
+        }, cancellationToken).ConfigureAwait(false);
+    }
 
-        var workspace = new RunWorkspace(settings.WorkRoot, runId);
-        try
-        {
-            var step = await ExecuteStepAsync(stage, stage.Key, 1, bound, workspace, runId, settings, cancellationToken).ConfigureAwait(false);
-            var status = step.Status switch
-            {
-                StepStatus.Succeeded => RunStatus.Succeeded,
-                StepStatus.Cancelled => RunStatus.Cancelled,
-                _ => RunStatus.Failed,
-            };
-            await _recorder.RunFinishedAsync(new RunFinished(runId, status, _time.GetUtcNow(), step.Outputs, step.Error), CancellationToken.None)
-                .ConfigureAwait(false);
-            return new RunResult(runId, RunKind.Stage, status, _time.GetElapsedTime(started), [step], step.Outputs, step.Files, step.Error, workspace.DeleteResultsAsync);
-        }
-        catch
-        {
-            await workspace.DeleteResultsAsync().ConfigureAwait(false);
-            throw;
-        }
-        finally
-        {
-            workspace.DeleteRun();
-        }
+    public async Task<RunResult> RunPipelineAsync(
+        string pipelineKey, object? inputs, RunOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pipelineKey);
+        var settings = Settings;
+        _janitor.EnsureCleaned();
+        var pipeline = await ResolvePipelineAsync(pipelineKey, options?.Version, cancellationToken).ConfigureAwait(false);
+        var bound = InputBinder.Bind(pipeline.Inputs, inputs, settings.MaxFileBytes);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await RunAsync(RunKind.Pipeline, pipeline.Key, pipeline.Version, bound, options, settings,
+            (context, inputFiles) => ExecutePipelineAsync(pipeline, bound.Wire, inputFiles, context, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()
@@ -115,10 +111,120 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
         }
     }
 
+    private async Task<RunResult> RunAsync(
+        RunKind kind,
+        string key,
+        int version,
+        BoundInputs bound,
+        RunOptions? options,
+        PythonScriptRunnerOptions settings,
+        Func<RunContext, IReadOnlyDictionary<string, IReadOnlyList<PsrFile>>, Task<RunOutcome>> body,
+        CancellationToken cancellationToken)
+    {
+        var runId = RunId.New();
+        var started = _time.GetTimestamp();
+        await _recorder.RunStartedAsync(
+            new RunStarted(runId, kind, key, version, options?.TriggeredBy ?? "system:library", _time.GetUtcNow(), (JsonObject)bound.Wire.DeepClone()),
+            cancellationToken).ConfigureAwait(false);
+
+        var context = new RunContext(new RunWorkspace(settings.WorkRoot, runId), settings);
+        try
+        {
+            RunOutcome outcome;
+            try
+            {
+                var inputFiles = await MaterializeInputsAsync(bound.Files, context.Workspace, cancellationToken).ConfigureAwait(false);
+                context.UsedBytes = inputFiles.Values.SelectMany(files => files).Sum(file => file.Length ?? 0);
+                outcome = context.UsedBytes > settings.MaxRunFilesBytes
+                    ? RunOutcome.Aborted(RunStatus.Failed, new RunError(ErrorKind.ArtifactLimitExceeded, "The input files exceed the run limit.") { Code = "RUN_FILES_TOO_LARGE" })
+                    : await body(context, inputFiles).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                outcome = RunOutcome.Aborted(RunStatus.Cancelled, new RunError(ErrorKind.Cancelled, "The run was cancelled."));
+            }
+
+            await _recorder.RunFinishedAsync(new RunFinished(runId, outcome.Status, _time.GetUtcNow(), outcome.Outputs, outcome.Error), CancellationToken.None)
+                .ConfigureAwait(false);
+            return new RunResult(runId, kind, outcome.Status, _time.GetElapsedTime(started), outcome.Steps, outcome.Outputs, outcome.Files, outcome.Error,
+                context.Workspace.DeleteResultsAsync);
+        }
+        catch
+        {
+            await context.Workspace.DeleteResultsAsync().ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            context.Workspace.DeleteRun();
+        }
+    }
+
+    private async Task<RunOutcome> ExecutePipelineAsync(
+        PipelineDefinition pipeline,
+        JsonObject pipelineInputs,
+        IReadOnlyDictionary<string, IReadOnlyList<PsrFile>> pipelineFiles,
+        RunContext context,
+        CancellationToken cancellationToken)
+    {
+        var steps = new List<StepResult>();
+        var completed = new Dictionary<string, StepResult>(StringComparer.Ordinal);
+        var status = RunStatus.Succeeded;
+        RunError? error = null;
+        for (var i = 0; i < pipeline.Steps.Count; i++)
+        {
+            var definition = pipeline.Steps[i];
+            if (status != RunStatus.Succeeded)
+            {
+                steps.Add(Skipped(definition, i + 1));
+                continue;
+            }
+
+            var stage = await _catalog.FindStageAsync(definition.StageKey, definition.StageVersion, cancellationToken).ConfigureAwait(false)
+                ?? throw new PsrConfigurationException($"Stage '{definition.StageKey}@{definition.StageVersion}' of pipeline '{pipeline.Key}' is not in the catalog.");
+            var inputs = StepInputResolver.Resolve(stage, pipeline, i, pipelineInputs, pipelineFiles, completed);
+            var result = inputs.Errors.Count > 0
+                ? InvalidInputs(stage, definition.Key, i + 1, inputs.Errors)
+                : await ExecuteStepAsync(stage, definition.Key, i + 1, inputs.Wire, inputs.Files, context, cancellationToken).ConfigureAwait(false);
+            steps.Add(result);
+            if (result.Status == StepStatus.Succeeded)
+            {
+                completed[definition.Key] = result;
+            }
+            else
+            {
+                status = StatusOf(result.Status);
+                error = result.Error;
+            }
+        }
+
+        if (status != RunStatus.Succeeded)
+        {
+            return new RunOutcome(status, steps, null, null, error);
+        }
+
+        var outputs = new JsonObject();
+        var files = new Dictionary<string, IReadOnlyList<PsrFile>>(StringComparer.Ordinal);
+        foreach (var output in pipeline.Outputs)
+        {
+            var source = completed[output.Source.Step];
+            if (source.Outputs?[output.Source.Field] is { } value)
+            {
+                outputs[output.Name] = value.DeepClone();
+            }
+
+            if (source.Files.TryGetValue(output.Source.Field, out var produced))
+            {
+                files[output.Name] = produced;
+            }
+        }
+
+        return new RunOutcome(RunStatus.Succeeded, steps, outputs, files, null);
+    }
+
     private async Task<StageDefinition> ResolveStageAsync(string key, int? version, CancellationToken cancellationToken)
     {
-        var stage = await _catalog.FindStageAsync(key, version, cancellationToken).ConfigureAwait(false);
-        if (stage is not null)
+        if (await _catalog.FindStageAsync(key, version, cancellationToken).ConfigureAwait(false) is { } stage)
         {
             return stage;
         }
@@ -131,14 +237,28 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
         throw new StageNotFoundException(key);
     }
 
+    private async Task<PipelineDefinition> ResolvePipelineAsync(string key, int? version, CancellationToken cancellationToken)
+    {
+        if (await _catalog.FindPipelineAsync(key, version, cancellationToken).ConfigureAwait(false) is { } pipeline)
+        {
+            return pipeline;
+        }
+
+        if (version is { } requested && await _catalog.FindPipelineAsync(key, null, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            throw new VersionNotFoundException(key, requested);
+        }
+
+        throw new PipelineNotFoundException(key);
+    }
+
     private async Task<StepResult> ExecuteStepAsync(
         StageDefinition stage,
         string stepKey,
         int order,
-        BoundInputs bound,
-        RunWorkspace workspace,
-        RunId runId,
-        PythonScriptRunnerOptions settings,
+        JsonObject inputs,
+        IReadOnlyList<InputFileCopy> files,
+        RunContext context,
         CancellationToken cancellationToken)
     {
         var attempts = new List<AttemptResult>();
@@ -155,33 +275,18 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
             Error = error is null ? null : error with { StepKey = stepKey },
         };
 
-        IReadOnlyList<InputFileCopy> files;
-        try
-        {
-            files = await MaterializeInputsAsync(bound.Files, workspace, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            return Finish(StepStatus.Cancelled, new RunError(ErrorKind.Cancelled, "The run was cancelled."));
-        }
-
-        var inputBytes = files.Sum(f => f.Size);
-        if (inputBytes > settings.MaxRunFilesBytes)
-        {
-            return Finish(StepStatus.Failed, new RunError(ErrorKind.ArtifactLimitExceeded, "The input files exceed the run limit.") { Code = "RUN_FILES_TOO_LARGE" });
-        }
-
         for (var number = 1; ; number++)
         {
             var cause = number == 1 ? AttemptCause.Initial : AttemptCause.AutoRetry;
-            var outcome = await RunAttemptAsync(stage, stepKey, number, cause, bound, files, workspace, runId, settings, settings.MaxRunFilesBytes - inputBytes, cancellationToken)
-                .ConfigureAwait(false);
+            var outcome = await RunAttemptAsync(stage, stepKey, number, cause, inputs, files, context, cancellationToken).ConfigureAwait(false);
             attempts.Add(outcome.Attempt);
-            await _recorder.AttemptFinishedAsync(new AttemptFinished(runId, stepKey, outcome.Attempt), CancellationToken.None).ConfigureAwait(false);
+            await _recorder.AttemptFinishedAsync(new AttemptFinished(context.Workspace.RunId, stepKey, outcome.Attempt), CancellationToken.None)
+                .ConfigureAwait(false);
 
             switch (outcome.Attempt.Status)
             {
                 case AttemptStatus.Succeeded:
+                    context.UsedBytes += outcome.Files.Values.SelectMany(f => f).Sum(f => f.Length ?? 0);
                     return Finish(StepStatus.Succeeded, null, outcome);
                 case AttemptStatus.Cancelled:
                     return Finish(StepStatus.Cancelled, outcome.Attempt.Error);
@@ -212,24 +317,22 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
         string stepKey,
         int number,
         AttemptCause cause,
-        BoundInputs bound,
+        JsonObject inputs,
         IReadOnlyList<InputFileCopy> files,
-        RunWorkspace workspace,
-        RunId runId,
-        PythonScriptRunnerOptions settings,
-        long fileBudget,
+        RunContext context,
         CancellationToken cancellationToken)
     {
+        var settings = context.Settings;
         var startedAt = _time.GetUtcNow();
         var started = _time.GetTimestamp();
         var queued = TimeSpan.Zero;
         string? environmentHash = null;
-        var workDirectory = workspace.AttemptDirectory(stepKey, number);
+        var workDirectory = context.Workspace.AttemptDirectory(stepKey, number);
 
         using var activity = PsrDiagnostics.Source.StartActivity("psr.stage.execute");
         activity?.SetTag("psr.stage.key", stage.Key);
         activity?.SetTag("psr.stage.version", stage.Version);
-        activity?.SetTag("psr.run.id", runId.ToString());
+        activity?.SetTag("psr.run.id", context.Workspace.RunId.ToString());
         activity?.SetTag("psr.step.key", stepKey);
         activity?.SetTag("psr.attempt", number);
 
@@ -255,17 +358,17 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
                         {
                             Stage = stage,
                             Environment = environment,
-                            RunId = runId,
+                            RunId = context.Workspace.RunId,
                             StepKey = stepKey,
                             Attempt = number,
                             WorkDirectory = workDirectory,
-                            Inputs = bound.Wire,
+                            Inputs = inputs,
                             Files = files,
                             Secrets = secrets,
                             Timeout = stage.Timeout ?? settings.DefaultTimeout,
                             MemoryLimitMb = stage.MemoryLimitMb ?? settings.DefaultMemoryLimitMb,
                             MaxFileBytes = settings.MaxFileBytes,
-                            FileBudgetBytes = fileBudget,
+                            FileBudgetBytes = settings.MaxRunFilesBytes - context.UsedBytes,
                             MaxLogBytes = settings.MaxLogBytes,
                         },
                         cancellationToken).ConfigureAwait(false);
@@ -288,7 +391,7 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
         try
         {
             var outputFiles = execution.Status == AttemptStatus.Succeeded
-                ? MoveOutputs(execution.Files, workspace, stepKey)
+                ? MoveOutputs(execution.Files, context.Workspace, stepKey)
                 : new Dictionary<string, IReadOnlyList<PsrFile>>();
             var duration = _time.GetElapsedTime(started);
             var overhead = duration - execution.ProcessDuration - queued;
@@ -340,30 +443,39 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
         return (values, missing);
     }
 
-    private static async Task<IReadOnlyList<InputFileCopy>> MaterializeInputsAsync(
+    /// <summary>Copies the caller's files once to <c>runs/&lt;id&gt;/inputs</c>; every step and attempt reads them from there.</summary>
+    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<PsrFile>>> MaterializeInputsAsync(
         IReadOnlyList<BoundFile> files, RunWorkspace workspace, CancellationToken cancellationToken)
     {
-        var copies = new List<InputFileCopy>(files.Count);
-        foreach (var bound in files)
+        var result = new Dictionary<string, IReadOnlyList<PsrFile>>(StringComparer.Ordinal);
+        foreach (var group in files.GroupBy(f => f.Field))
         {
-            var name = RunWorkspace.SafeFileName(bound.File.FileName);
-            var target = Path.Combine(workspace.InputsDirectory, bound.Field, bound.Index.ToString(System.Globalization.CultureInfo.InvariantCulture), name);
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            await bound.File.SaveAsAsync(target, cancellationToken).ConfigureAwait(false);
-
-            string sha256;
-            long size;
-            await using (var stream = File.OpenRead(target))
+            var list = new List<PsrFile>();
+            foreach (var bound in group.OrderBy(f => f.Index))
             {
-                size = stream.Length;
-                sha256 = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false));
+                var name = RunWorkspace.SafeFileName(bound.File.FileName);
+                var target = Path.Combine(workspace.InputsDirectory, bound.Field, bound.Index.ToString(CultureInfo.InvariantCulture), name);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                await bound.File.SaveAsAsync(target, cancellationToken).ConfigureAwait(false);
+
+                string sha256;
+                await using (var stream = File.OpenRead(target))
+                {
+                    sha256 = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false));
+                }
+
+                list.Add(PsrFile.FromProducedFile(target, name, bound.File.ContentType, sha256));
             }
 
-            copies.Add(new InputFileCopy(bound.Field, bound.Index, target, name, bound.File.ContentType, size, sha256));
+            result[group.Key] = list;
         }
 
-        return copies;
+        return result;
     }
+
+    private static List<InputFileCopy> ToCopies(IReadOnlyDictionary<string, IReadOnlyList<PsrFile>> files) =>
+        [.. files.SelectMany(group => group.Value.Select((file, index) =>
+            new InputFileCopy(group.Key, index, file.LocalPath!, file.FileName, file.ContentType, file.Length ?? 0, file.Sha256!)))];
 
     private static Dictionary<string, IReadOnlyList<PsrFile>> MoveOutputs(IReadOnlyList<OutputFile> files, RunWorkspace workspace, string stepKey)
     {
@@ -374,7 +486,7 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
             foreach (var file in group.OrderBy(f => f.Index))
             {
                 var name = RunWorkspace.SafeFileName(file.FileName);
-                var target = Path.Combine(workspace.ResultsDirectory, stepKey, file.Field, file.Index.ToString(System.Globalization.CultureInfo.InvariantCulture), name);
+                var target = Path.Combine(workspace.ResultsDirectory, stepKey, file.Field, file.Index.ToString(CultureInfo.InvariantCulture), name);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 File.Move(file.FullPath, target, overwrite: true);
                 list.Add(PsrFile.FromProducedFile(target, name, file.ContentType, file.Sha256));
@@ -385,6 +497,38 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
 
         return result;
     }
+
+    private static RunStatus StatusOf(StepStatus status) => status switch
+    {
+        StepStatus.Succeeded => RunStatus.Succeeded,
+        StepStatus.Cancelled => RunStatus.Cancelled,
+        _ => RunStatus.Failed,
+    };
+
+    private static StepResult Skipped(PipelineStepDefinition definition, int order) => new()
+    {
+        StepKey = definition.Key,
+        Order = order,
+        StageKey = definition.StageKey,
+        StageVersion = definition.StageVersion,
+        Status = StepStatus.Skipped,
+        Attempts = [],
+    };
+
+    private static StepResult InvalidInputs(StageDefinition stage, string stepKey, int order, IReadOnlyList<InputError> errors) => new()
+    {
+        StepKey = stepKey,
+        Order = order,
+        StageKey = stage.Key,
+        StageVersion = stage.Version,
+        Status = StepStatus.Failed,
+        Attempts = [],
+        Error = new RunError(ErrorKind.InputValidation, string.Join("; ", errors.Select(e => $"'{e.Field}': {e.Message}")))
+        {
+            Code = errors[0].Code,
+            StepKey = stepKey,
+        },
+    };
 
     private void ForwardOutput(string stageKey, AttemptResult attempt)
     {
@@ -400,4 +544,24 @@ internal sealed class PythonRunner : IPythonRunner, IDisposable
     }
 
     private sealed record AttemptOutcome(AttemptResult Attempt, JsonObject? Outputs, IReadOnlyDictionary<string, IReadOnlyList<PsrFile>> Files);
+
+    private sealed record RunOutcome(
+        RunStatus Status,
+        IReadOnlyList<StepResult> Steps,
+        JsonObject? Outputs,
+        IReadOnlyDictionary<string, IReadOnlyList<PsrFile>>? Files,
+        RunError? Error)
+    {
+        public static RunOutcome Aborted(RunStatus status, RunError error) => new(status, [], null, null, error);
+    }
+
+    /// <summary>State shared by the steps of one run (folders, settings and the file budget).</summary>
+    private sealed class RunContext(RunWorkspace workspace, PythonScriptRunnerOptions settings)
+    {
+        public RunWorkspace Workspace { get; } = workspace;
+
+        public PythonScriptRunnerOptions Settings { get; } = settings;
+
+        public long UsedBytes { get; set; }
+    }
 }
