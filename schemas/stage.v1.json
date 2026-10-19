@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/stage.v1.json",
+  "title": "PythonScriptRunner stage manifest (v1)",
+  "description": "Declares one Stage: typed inputs, exactly one Python script and typed outputs.",
+  "type": "object",
+  "required": ["key", "version", "name", "inputs", "outputs"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "key": {
+      "description": "Unique slug of the stage.",
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "description": { "type": "string" },
+    "python": {
+      "description": "Python version used to run the script (minimum 3.10). Default: 3.12.",
+      "type": "string",
+      "pattern": "^3\\.(1[0-9]|[2-9][0-9])$"
+    },
+    "script": {
+      "description": "Script file, relative to the stage folder. Default: script.py.",
+      "type": "string",
+      "minLength": 1
+    },
+    "requirements": {
+      "description": "requirements.txt file, relative to the stage folder. Default: requirements.txt (optional).",
+      "type": "string",
+      "minLength": 1
+    },
+    "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+    "memoryLimitMb": { "type": "integer", "minimum": 64 },
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxAttempts": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "initialDelaySeconds": { "type": "integer", "minimum": 0, "maximum": 600 },
+        "backoffMultiplier": { "type": "number", "minimum": 1, "maximum": 10 }
+      }
+    },
+    "idempotent": { "type": "boolean" },
+    "secrets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" }
+    },
+    "inputs": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "outputs": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+  },
+  "$defs": {
+    "scalarType": {
+      "enum": ["number", "integer", "decimal", "string", "bool", "date", "datetime"]
+    },
+    "field": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z_][a-z0-9_]{0,63}$" },
+        "type": {
+          "enum": ["number", "integer", "decimal", "string", "bool", "date", "datetime", "enum", "json", "table", "file", "list"]
+        },
+        "itemType": {
+          "enum": ["number", "integer", "decimal", "string", "bool", "date", "datetime", "enum", "file"]
+        },
+        "required": { "type": "boolean" },
+        "default": {},
+        "description": { "type": "string", "maxLength": 500 },
+        "enumValues": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "contentTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": { "$ref": "#/$defs/scalarType" }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "list" } } },
+          "then": { "required": ["itemType"] },
+          "else": { "not": { "required": ["itemType"] } }
+        },
+        {
+          "if": {
+            "anyOf": [
+              { "properties": { "type": { "const": "enum" } } },
+              { "properties": { "type": { "const": "list" }, "itemType": { "const": "enum" } }, "required": ["itemType"] }
+            ]
+          },
+          "then": { "required": ["enumValues"] },
+          "else": { "not": { "required": ["enumValues"] } }
+        },
+        {
+          "if": {
+            "anyOf": [
+              { "properties": { "type": { "const": "file" } } },
+              { "properties": { "type": { "const": "list" }, "itemType": { "const": "file" } }, "required": ["itemType"] }
+            ]
+          },
+          "then": { "not": { "required": ["default"] } },
+          "else": { "not": { "required": ["contentTypes"] } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "table" } } },
+          "then": { "not": { "required": ["default"] } },
+          "else": { "not": { "required": ["columns"] } }
+        }
+      ]
+    }
+  }
+}
