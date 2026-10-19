@@ -41,8 +41,15 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # The persistence tests start PostgreSQL 16 with Testcontainers (Docker); GitHub's Windows runners
+      # cannot run Linux containers, so Windows runs the Core tests only.
       - name: Test
+        if: runner.os == 'Linux'
         run: dotnet test --no-build --configuration Release
+
+      - name: Test (Core)
+        if: runner.os == 'Windows'
+        run: dotnet test --no-build --configuration Release --project tests/PythonScriptRunner.Core.Tests
 
   format:
     name: .NET format
