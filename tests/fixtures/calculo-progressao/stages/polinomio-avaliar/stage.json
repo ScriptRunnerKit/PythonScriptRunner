@@ -1,0 +1,27 @@
+{
+  "$schema": "../../../../../schemas/stage.v1.json",
+  "key": "polinomio-avaliar",
+  "version": 1,
+  "name": "Avaliar polinômio",
+  "idempotent": true,
+  "inputs": [
+    {
+      "name": "coeficientes",
+      "type": "list",
+      "itemType": "number",
+      "description": "a, b, c, d... de a + b·x + c·x² + ..."
+    },
+    {
+      "name": "x",
+      "type": "list",
+      "itemType": "number"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "valores",
+      "type": "list",
+      "itemType": "number"
+    }
+  ]
+}

@@ -8,6 +8,8 @@ namespace PythonScriptRunner.Core.Running;
 /// <summary>Folders of one run: <c>runs/&lt;id&gt;</c> (work, deleted at the end) and <c>results/&lt;id&gt;</c> (kept until the result is disposed).</summary>
 internal sealed class RunWorkspace(string workRoot, RunId runId)
 {
+    public RunId RunId { get; } = runId;
+
     public string RunDirectory { get; } = Path.Combine(workRoot, "runs", runId.ToString());
 
     public string ResultsDirectory { get; } = Path.Combine(workRoot, "results", runId.ToString());

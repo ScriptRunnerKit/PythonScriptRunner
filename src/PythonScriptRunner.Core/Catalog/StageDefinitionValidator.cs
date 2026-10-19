@@ -7,10 +7,10 @@ namespace PythonScriptRunner.Core.Catalog;
 internal static partial class StageDefinitionValidator
 {
     [GeneratedRegex("^[a-z0-9]+(-[a-z0-9]+)*$")]
-    private static partial Regex KeyPattern();
+    internal static partial Regex KeyPattern();
 
     [GeneratedRegex("^[a-z_][a-z0-9_]{0,63}$")]
-    private static partial Regex FieldNamePattern();
+    internal static partial Regex FieldNamePattern();
 
     [GeneratedRegex("^[A-Z][A-Z0-9_]{0,63}$")]
     private static partial Regex SecretPattern();
@@ -96,7 +96,7 @@ internal static partial class StageDefinitionValidator
         }
     }
 
-    private static void ValidateFields(IReadOnlyList<FieldDefinition> fields, string section, List<string> errors)
+    internal static void ValidateFields(IReadOnlyList<FieldDefinition> fields, string section, List<string> errors)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var field in fields)

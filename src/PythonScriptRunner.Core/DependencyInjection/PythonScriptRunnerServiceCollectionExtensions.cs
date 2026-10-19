@@ -7,6 +7,7 @@ using PythonScriptRunner.Core.Catalog;
 using PythonScriptRunner.Core.Diagnostics;
 using PythonScriptRunner.Core.Environments;
 using PythonScriptRunner.Core.Execution;
+using PythonScriptRunner.Core.Pipelines;
 using PythonScriptRunner.Core.Running;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,7 @@ public static class PythonScriptRunnerServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<PythonScriptRunnerOptions>, PythonScriptRunnerOptionsValidator>());
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ICatalog, CompositeCatalog>();
+        services.TryAddSingleton<IPipelineValidator, PipelineValidator>();
         services.TryAddSingleton<ISecretProvider, ConfigurationSecretProvider>();
         services.TryAddSingleton<IRunRecorder, NullRunRecorder>();
         services.TryAddSingleton<IEnvironmentManager, UvEnvironmentManager>();
@@ -60,14 +62,14 @@ public interface IPythonScriptRunnerBuilder
 /// <summary>Catalog and provider registration.</summary>
 public static class PythonScriptRunnerBuilderExtensions
 {
-    /// <summary>Loads stages from <c>&lt;rootPath&gt;/stages/&lt;folder&gt;/stage.json</c>.</summary>
+    /// <summary>Loads stages from <c>&lt;rootPath&gt;/stages/&lt;folder&gt;/stage.json</c> and pipelines from <c>&lt;rootPath&gt;/pipelines/*.pipeline.json</c>.</summary>
     /// <param name="builder">Builder.</param>
     /// <param name="rootPath">Catalog folder.</param>
     public static IPythonScriptRunnerBuilder AddFileCatalog(this IPythonScriptRunnerBuilder builder, string rootPath)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
-        builder.Services.AddSingleton<IStageSource>(new FileStageSource(rootPath));
+        builder.Services.AddSingleton<ICatalogSource>(new FileCatalogSource(rootPath));
         return builder;
     }
 
@@ -84,7 +86,21 @@ public static class PythonScriptRunnerBuilderExtensions
         configure(stageBuilder);
         var stage = stageBuilder.Build();
         StageDefinitionValidator.EnsureValid(stage, "code");
-        builder.Services.AddSingleton<IStageSource>(new StaticStageSource(stage));
+        builder.Services.AddSingleton<ICatalogSource>(new StaticCatalogSource(stage: stage));
+        return builder;
+    }
+
+    /// <summary>Defines a pipeline in code. It is validated against the catalog stages when the catalog loads.</summary>
+    /// <param name="builder">Builder.</param>
+    /// <param name="key">Pipeline key (slug).</param>
+    /// <param name="configure">Fluent definition: inputs, steps (<c>stage@version</c> + bindings) and outputs.</param>
+    public static IPythonScriptRunnerBuilder AddPipeline(this IPythonScriptRunnerBuilder builder, string key, Action<PipelineBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configure);
+        var pipelineBuilder = new PipelineBuilder(key);
+        configure(pipelineBuilder);
+        builder.Services.AddSingleton<ICatalogSource>(new StaticCatalogSource(pipeline: pipelineBuilder.Build()));
         return builder;
     }
 
