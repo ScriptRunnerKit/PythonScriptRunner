@@ -142,7 +142,8 @@ public sealed class IsolationTests(PythonFixture fixture)
 
         var names = result.GetOutput<JsonArray>("nomes").Select(n => n!.GetValue<string>().ToUpperInvariant()).ToList();
         names.ShouldNotContain("PSR_TEST_HOST_ONLY");
-        string[] allowed = ["PATH", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME"];
+        // LC_CTYPE is set by the interpreter itself on Linux (PEP 538 locale coercion), not inherited from the host.
+        string[] allowed = ["PATH", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME", "LC_CTYPE"];
         names.Where(n => !n.StartsWith("PSR_", StringComparison.Ordinal) && !allowed.Contains(n)).ShouldBeEmpty();
     }
 
