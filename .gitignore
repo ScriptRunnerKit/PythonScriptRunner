@@ -1,0 +1,40 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.rsuser
+.vs/
+TestResults/
+*.trx
+coverage*.json
+coverage*.xml
+*.coverage
+artifacts/
+*.nupkg
+*.snupkg
+*.received.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.vite/
+
+# IDEs / SO
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
