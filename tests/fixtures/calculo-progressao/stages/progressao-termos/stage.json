@@ -1,0 +1,40 @@
+{
+  "$schema": "../../../../../schemas/stage.v1.json",
+  "key": "progressao-termos",
+  "version": 1,
+  "name": "Termos de progressão",
+  "idempotent": true,
+  "inputs": [
+    {
+      "name": "a1",
+      "type": "number",
+      "description": "Primeiro termo"
+    },
+    {
+      "name": "razao",
+      "type": "number"
+    },
+    {
+      "name": "n",
+      "type": "integer",
+      "description": "Quantidade de termos"
+    },
+    {
+      "name": "tipo",
+      "type": "enum",
+      "enumValues": [
+        "aritmetica",
+        "geometrica"
+      ],
+      "required": false,
+      "default": "aritmetica"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "termos",
+      "type": "list",
+      "itemType": "number"
+    }
+  ]
+}

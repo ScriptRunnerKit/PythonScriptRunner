@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../../../schemas/stage.v1.json",
+  "key": "estatisticas",
+  "version": 1,
+  "name": "Estatísticas",
+  "idempotent": true,
+  "inputs": [
+    {
+      "name": "valores",
+      "type": "list",
+      "itemType": "number"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "soma",
+      "type": "number"
+    },
+    {
+      "name": "media",
+      "type": "number"
+    },
+    {
+      "name": "desvio_padrao",
+      "type": "number",
+      "description": "Desvio padrão populacional"
+    }
+  ]
+}

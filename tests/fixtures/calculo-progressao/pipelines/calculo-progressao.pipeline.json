@@ -1,0 +1,88 @@
+{
+  "$schema": "../../../../schemas/pipeline.v1.json",
+  "key": "calculo-progressao",
+  "version": 1,
+  "name": "Cálculo de progressão",
+  "inputs": [
+    {
+      "name": "a1",
+      "type": "number"
+    },
+    {
+      "name": "razao",
+      "type": "number"
+    },
+    {
+      "name": "n",
+      "type": "integer"
+    },
+    {
+      "name": "tipo",
+      "type": "enum",
+      "enumValues": [
+        "aritmetica",
+        "geometrica"
+      ],
+      "required": false,
+      "default": "aritmetica"
+    },
+    {
+      "name": "coeficientes",
+      "type": "list",
+      "itemType": "number"
+    }
+  ],
+  "steps": [
+    {
+      "key": "termos",
+      "stage": "progressao-termos@1",
+      "bindings": {
+        "a1": "$pipeline.a1",
+        "razao": "$pipeline.razao",
+        "n": "$pipeline.n",
+        "tipo": "$pipeline.tipo"
+      }
+    },
+    {
+      "key": "polinomio",
+      "stage": "polinomio-avaliar@1",
+      "bindings": {
+        "coeficientes": "$pipeline.coeficientes",
+        "x": "$steps.termos.termos"
+      }
+    },
+    {
+      "key": "estatisticas",
+      "stage": "estatisticas@1",
+      "bindings": {
+        "valores": "$steps.polinomio.valores"
+      }
+    },
+    {
+      "key": "tabela",
+      "stage": "montar-tabela@1",
+      "bindings": {
+        "x": "$steps.termos.termos",
+        "y": "$steps.polinomio.valores"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "soma",
+      "source": "$steps.estatisticas.soma"
+    },
+    {
+      "name": "media",
+      "source": "$steps.estatisticas.media"
+    },
+    {
+      "name": "desvio_padrao",
+      "source": "$steps.estatisticas.desvio_padrao"
+    },
+    {
+      "name": "tabela",
+      "source": "$steps.tabela.tabela"
+    }
+  ]
+}

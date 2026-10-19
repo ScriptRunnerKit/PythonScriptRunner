@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../../../schemas/stage.v1.json",
+  "key": "montar-tabela",
+  "version": 1,
+  "name": "Montar tabela",
+  "idempotent": true,
+  "inputs": [
+    {
+      "name": "x",
+      "type": "list",
+      "itemType": "number"
+    },
+    {
+      "name": "y",
+      "type": "list",
+      "itemType": "number"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "tabela",
+      "type": "table",
+      "columns": [
+        {
+          "name": "i",
+          "type": "integer"
+        },
+        {
+          "name": "x",
+          "type": "number"
+        },
+        {
+          "name": "y",
+          "type": "number"
+        }
+      ]
+    }
+  ]
+}
