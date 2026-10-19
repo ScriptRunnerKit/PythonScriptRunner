@@ -83,6 +83,57 @@ public enum AttemptCause
     LeaseRecovery,
 }
 
+/// <summary>Who or what started a run.</summary>
+public enum RunTrigger
+{
+    /// <summary>Code calling the library.</summary>
+    Library,
+    /// <summary>A user in the panel.</summary>
+    Dashboard,
+    /// <summary>A cron schedule.</summary>
+    Schedule,
+    /// <summary>The public queue command.</summary>
+    QueueCommand,
+}
+
+/// <summary>How a run is executed.</summary>
+public enum ExecutionMode
+{
+    /// <summary>In the calling process, waiting for the result.</summary>
+    Sync,
+    /// <summary>By a worker, through the queue.</summary>
+    Async,
+}
+
+/// <summary>Life cycle of a stage or pipeline version.</summary>
+public enum VersionStatus
+{
+    /// <summary>Editable; can be tested but not used by published pipelines.</summary>
+    Draft,
+    /// <summary>Immutable and runnable.</summary>
+    Published,
+    /// <summary>Immutable and no longer runnable (terminal).</summary>
+    Archived,
+}
+
+/// <summary>Whether a stored file was given to a run or produced by it.</summary>
+public enum ArtifactDirection
+{
+    /// <summary>Input of the run.</summary>
+    Input,
+    /// <summary>Output of a step.</summary>
+    Output,
+}
+
+/// <summary>Output stream of a Python process.</summary>
+public enum LogStream
+{
+    /// <summary>Standard output.</summary>
+    Stdout,
+    /// <summary>Standard error.</summary>
+    Stderr,
+}
+
 /// <summary>Classification of a failure.</summary>
 public enum ErrorKind
 {

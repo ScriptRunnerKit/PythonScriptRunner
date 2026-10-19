@@ -1,11 +1,10 @@
 using System.Text.Json.Nodes;
-using PythonScriptRunner.Core.Execution;
 using PythonScriptRunner.Core.Values;
 
 namespace PythonScriptRunner.Core.Pipelines;
 
-/// <summary>Inputs of one pipeline step after resolving its bindings.</summary>
-internal sealed record StepInputs(JsonObject Wire, IReadOnlyList<InputFileCopy> Files, IReadOnlyList<InputError> Errors);
+/// <summary>Inputs of one pipeline step after resolving its bindings (files are shared with their source, never copied).</summary>
+internal sealed record StepInputs(JsonObject Wire, IReadOnlyDictionary<string, IReadOnlyList<PsrFile>> Files, IReadOnlyList<InputError> Errors);
 
 /// <summary>Resolves the inputs of a step from pipeline inputs, earlier step outputs, constants and implicit bindings.</summary>
 internal static class StepInputResolver
@@ -20,7 +19,7 @@ internal static class StepInputResolver
     {
         var step = pipeline.Steps[index];
         var wire = new JsonObject();
-        var files = new List<InputFileCopy>();
+        var files = new Dictionary<string, IReadOnlyList<PsrFile>>(StringComparer.Ordinal);
         var errors = new List<InputError>();
         foreach (var target in stage.Inputs)
         {
@@ -30,8 +29,7 @@ internal static class StepInputResolver
             {
                 if (sourceFiles is { Count: > 0 })
                 {
-                    files.AddRange(sourceFiles.Select((file, i) =>
-                        new InputFileCopy(target.Name, i, file.LocalPath!, file.FileName, file.ContentType, file.Length ?? 0, file.Sha256!)));
+                    files[target.Name] = sourceFiles;
                 }
                 else if (target.Required)
                 {

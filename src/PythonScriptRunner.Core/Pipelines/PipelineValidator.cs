@@ -12,7 +12,14 @@ internal sealed class PipelineValidator(ICatalog catalog) : IPipelineValidator
             var reference = (step.StageKey, step.StageVersion);
             if (!stages.ContainsKey(reference))
             {
-                stages[reference] = await catalog.FindStageAsync(step.StageKey, step.StageVersion, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    stages[reference] = await catalog.FindStageAsync(step.StageKey, step.StageVersion, cancellationToken).ConfigureAwait(false);
+                }
+                catch (VersionNotRunnableException)
+                {
+                    stages[reference] = null;
+                }
             }
         }
 

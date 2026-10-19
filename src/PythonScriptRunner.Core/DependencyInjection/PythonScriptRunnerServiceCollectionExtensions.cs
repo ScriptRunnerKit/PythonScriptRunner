@@ -35,13 +35,16 @@ public static class PythonScriptRunnerServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ICatalog, CompositeCatalog>();
         services.TryAddSingleton<IPipelineValidator, PipelineValidator>();
+        services.TryAddSingleton<IStageValidator, StageValidator>();
         services.TryAddSingleton<ISecretProvider, ConfigurationSecretProvider>();
         services.TryAddSingleton<IRunRecorder, NullRunRecorder>();
         services.TryAddSingleton<IEnvironmentManager, UvEnvironmentManager>();
         services.TryAddSingleton<IPythonExecutor, ProcessPythonExecutor>();
         services.TryAddSingleton<PsrMetrics>();
         services.TryAddSingleton<WorkspaceJanitor>();
-        services.TryAddSingleton<IPythonRunner, PythonRunner>();
+        services.TryAddSingleton<PythonRunner>();
+        services.TryAddSingleton<IPythonRunner>(sp => sp.GetRequiredService<PythonRunner>());
+        services.TryAddSingleton<IRunEngine>(sp => sp.GetRequiredService<PythonRunner>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PythonScriptRunnerStartup>());
         return new PythonScriptRunnerBuilder(services);
     }

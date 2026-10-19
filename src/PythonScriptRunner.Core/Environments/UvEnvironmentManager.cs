@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PythonScriptRunner.Core.Diagnostics;
@@ -17,6 +18,62 @@ internal sealed class UvEnvironmentManager(
 {
     private const string ReadyMarker = ".psr-ready";
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMinutes(20);
+
+    /// <summary>Compiles the script given as argument and prints the outcome as JSON (same check as <c>py_compile</c>).</summary>
+    private const string SyntaxChecker = """
+        import json
+        import sys
+
+        with open(sys.argv[1], encoding="utf-8") as source_file:
+            source = source_file.read()
+        try:
+            compile(source, "script.py", "exec")
+        except (SyntaxError, ValueError) as error:
+            print(json.dumps({
+                "ok": False,
+                "message": getattr(error, "msg", None) or str(error),
+                "line": getattr(error, "lineno", None),
+                "column": getattr(error, "offset", None),
+            }))
+        else:
+            print(json.dumps({"ok": True}))
+        """;
+
+    public async Task<ScriptSyntaxError?> CheckSyntaxAsync(string? pythonVersion, string script, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(script);
+        var folder = Path.Combine(Path.GetTempPath(), "psr-syntax", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var checker = Path.Combine(folder, "check_syntax.py");
+            var target = Path.Combine(folder, "script.py");
+            await File.WriteAllTextAsync(checker, SyntaxChecker, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(target, script, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), cancellationToken).ConfigureAwait(false);
+            var version = pythonVersion ?? options.Value.DefaultPythonVersion;
+            var output = await CreateCli().RunAsync(
+                ["run", "--no-project", "--python", version, "--directory", folder, "python", "-I", checker, target], null, cancellationToken)
+                .ConfigureAwait(false);
+            var result = JsonNode.Parse(output.Trim().Split('\n')[^1])!.AsObject();
+            return result["ok"]!.GetValue<bool>()
+                ? null
+                : new ScriptSyntaxError(result["message"]?.GetValue<string>() ?? "invalid syntax", result["line"]?.GetValue<int?>(), result["column"]?.GetValue<int?>());
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (IOException)
+            {
+                // Best effort.
+            }
+        }
+    }
+
+    public string ComputeHash(string? pythonVersion, string? lockedRequirements) =>
+        Sha256Hex($"{pythonVersion ?? options.Value.DefaultPythonVersion}\n{Normalize(lockedRequirements ?? string.Empty)}\n{PsrunnerIdentity(options.Value.PsrunnerRequirement)}");
 
     public async Task<string> LockAsync(string? pythonVersion, string? requirements, CancellationToken cancellationToken = default)
     {
@@ -40,7 +97,7 @@ internal sealed class UvEnvironmentManager(
         var settings = options.Value;
         var version = stage.PythonVersion ?? settings.DefaultPythonVersion;
         var locked = stage.LockedRequirements ?? await GetCachedLockAsync(stage, version, cancellationToken).ConfigureAwait(false);
-        var hash = Sha256Hex($"{version}\n{Normalize(locked)}\n{PsrunnerIdentity(settings.PsrunnerRequirement)}");
+        var hash = ComputeHash(version, locked);
         var directory = Path.Combine(settings.EnvironmentCacheRoot, "envs", hash[..32]);
         var python = OperatingSystem.IsWindows()
             ? Path.Combine(directory, "Scripts", "python.exe")
@@ -113,7 +170,16 @@ internal sealed class UvEnvironmentManager(
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
         await File.WriteAllTextAsync(temporary, locked, cancellationToken).ConfigureAwait(false);
-        File.Move(temporary, path, overwrite: true);
+        try
+        {
+            File.Move(temporary, path, overwrite: true);
+        }
+        catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && File.Exists(path))
+        {
+            // Another process stored the same lock at the same moment (Windows denies replacing a file in use); keep theirs.
+            File.Delete(temporary);
+        }
+
         return locked;
     }
 

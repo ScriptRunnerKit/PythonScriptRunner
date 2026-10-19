@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>PythonScriptRunner</RootNamespace>
@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="PythonScriptRunner.Core.Tests" />
+    <!-- The persistence tests reuse the Python fixture of the Core tests (uv lookup). -->
+    <InternalsVisibleTo Include="PythonScriptRunner.EntityFrameworkCore.Tests" />
   </ItemGroup>
 
   <ItemGroup>

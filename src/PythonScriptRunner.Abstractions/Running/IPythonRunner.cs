@@ -39,4 +39,7 @@ public sealed record RunOptions
 
     /// <summary>Who requested the run. Default: <c>system:library</c>.</summary>
     public string? TriggeredBy { get; init; }
+
+    /// <summary>How the run was started. Default: <see cref="RunTrigger.Library"/>.</summary>
+    public RunTrigger Trigger { get; init; } = RunTrigger.Library;
 }

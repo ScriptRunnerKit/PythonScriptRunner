@@ -73,4 +73,7 @@ internal static partial class Log
 
     [LoggerMessage(9, LogLevel.Warning, "Pipeline {PipelineKey}@{PipelineVersion}: {Warning}")]
     public static partial void PipelineWarning(ILogger logger, string pipelineKey, int pipelineVersion, string warning);
+
+    [LoggerMessage(10, LogLevel.Error, "Could not record the failure of run {RunId}")]
+    public static partial void RecordingFailed(ILogger logger, RunId runId, Exception exception);
 }

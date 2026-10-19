@@ -47,6 +47,61 @@ public sealed class VersionNotFoundException : PsrException
     public int Version { get; }
 }
 
+/// <summary>The version exists but cannot run (it is a draft or was archived).</summary>
+public sealed class VersionNotRunnableException : PsrException
+{
+    /// <summary>Creates the exception.</summary>
+    /// <param name="key">Stage or pipeline key.</param>
+    /// <param name="version">Requested version.</param>
+    /// <param name="status">Current status of the version.</param>
+    public VersionNotRunnableException(string key, int version, VersionStatus status)
+        : base($"Version {version} of '{key}' is {status} and cannot run; only published versions run.")
+    {
+        Key = key;
+        Version = version;
+        Status = status;
+    }
+
+    /// <summary>Stage or pipeline key.</summary>
+    public string Key { get; }
+
+    /// <summary>Requested version.</summary>
+    public int Version { get; }
+
+    /// <summary>Current status of the version.</summary>
+    public VersionStatus Status { get; }
+}
+
+/// <summary>The run does not exist (or is beyond the retention).</summary>
+public sealed class RunNotFoundException : PsrException
+{
+    /// <summary>Creates the exception.</summary>
+    /// <param name="runId">Requested run.</param>
+    public RunNotFoundException(RunId runId)
+        : base($"Run {runId} was not found.")
+    {
+        RunId = runId;
+    }
+
+    /// <summary>Requested run.</summary>
+    public RunId RunId { get; }
+}
+
+/// <summary>The stored file does not exist (or is beyond the retention).</summary>
+public sealed class ArtifactNotFoundException : PsrException
+{
+    /// <summary>Creates the exception.</summary>
+    /// <param name="artifactId">Requested file.</param>
+    public ArtifactNotFoundException(ArtifactId artifactId)
+        : base($"Artifact {artifactId} was not found.")
+    {
+        ArtifactId = artifactId;
+    }
+
+    /// <summary>Requested file.</summary>
+    public ArtifactId ArtifactId { get; }
+}
+
 /// <summary>One invalid input.</summary>
 /// <param name="Field">Field path (e.g. <c>coeficientes[2]</c>).</param>
 /// <param name="Code">Stable code (e.g. <c>MISSING_REQUIRED_INPUT</c>).</param>
