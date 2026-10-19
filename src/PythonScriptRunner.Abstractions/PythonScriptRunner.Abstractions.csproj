@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>PythonScriptRunner</RootNamespace>
+    <Description>Contracts and public types of PythonScriptRunner: stage definitions, field types, run results and extension points.</Description>
+  </PropertyGroup>
+
+</Project>
