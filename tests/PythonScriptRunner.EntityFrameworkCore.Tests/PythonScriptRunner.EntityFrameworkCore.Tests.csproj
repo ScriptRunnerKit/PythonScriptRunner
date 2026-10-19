@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PythonScriptRunner.EntityFrameworkCore\PythonScriptRunner.EntityFrameworkCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Builds the psrunner wheel and warms the default environment (same fixture as the Core tests). -->
+    <Compile Include="..\PythonScriptRunner.Core.Tests\Infrastructure\PythonFixture.cs" Link="Infrastructure\PythonFixture.cs" />
+    <Compile Include="..\PythonScriptRunner.Core.Tests\Infrastructure\RunnerHost.cs" Link="Infrastructure\RunnerHost.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="PythonScriptRunner.Core.Tests.Infrastructure" />
+    <Using Include="Shouldly" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>
