@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PythonScriptRunner.Abstractions/PythonScriptRunner.Abstractions.csproj" />
+    <Project Path="src/PythonScriptRunner.Core/PythonScriptRunner.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PythonScriptRunner.Core.Tests/PythonScriptRunner.Core.Tests.csproj" />
+  </Folder>
+</Solution>
