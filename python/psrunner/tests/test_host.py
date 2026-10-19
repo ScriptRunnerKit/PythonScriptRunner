@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-
 import pytest
 from conftest import RunHost
 
@@ -252,10 +250,7 @@ def test_spec002_ac09_only_declared_secrets_are_readable(run_host: RunHost) -> N
     assert run.outputs["gravavel"] is False
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="Windows limits memory through a Job Object in .NET"
-)
-def test_spec002_ac10_memory_limit_on_posix(run_host: RunHost) -> None:
+def test_spec002_ac10_memory_limit(run_host: RunHost) -> None:
     script = """
         from psrunner import stage
 
