@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/pipeline.v1.json",
+  "title": "PythonScriptRunner pipeline manifest (v1)",
+  "description": "Declares one pipeline: inputs, ordered steps (stage@version + bindings) and declared outputs.",
+  "type": "object",
+  "required": [
+    "key",
+    "version",
+    "name",
+    "steps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "key": {
+      "description": "Unique slug of the stage.",
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/field"
+      }
+    },
+    "steps": {
+      "description": "Steps in execution order (linear).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "stage"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "maxLength": 64
+          },
+          "stage": {
+            "description": "Stage reference key@version.",
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*@[1-9][0-9]*$"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "bindings": {
+            "description": "Input of the stage -> $pipeline.<field>, $steps.<step>.<field> or {\"const\": value}. Unbound inputs use the implicit binding by name.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/binding"
+            }
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,63}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^\\$steps\\.[a-z0-9]+(-[a-z0-9]+)*\\.[a-z_][a-z0-9_]{0,63}$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "binding": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^\\$pipeline\\.[a-z_][a-z0-9_]{0,63}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^\\$steps\\.[a-z0-9]+(-[a-z0-9]+)*\\.[a-z_][a-z0-9_]{0,63}$"
+        },
+        {
+          "type": "object",
+          "required": [
+            "const"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "const": {}
+          }
+        }
+      ]
+    },
+    "scalarType": {
+      "enum": [
+        "number",
+        "integer",
+        "decimal",
+        "string",
+        "bool",
+        "date",
+        "datetime"
+      ]
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]{0,63}$"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "decimal",
+            "string",
+            "bool",
+            "date",
+            "datetime",
+            "enum",
+            "json",
+            "table",
+            "file",
+            "list"
+          ]
+        },
+        "itemType": {
+          "enum": [
+            "number",
+            "integer",
+            "decimal",
+            "string",
+            "bool",
+            "date",
+            "datetime",
+            "enum",
+            "file"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {},
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "enumValues": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "contentTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "$ref": "#/$defs/scalarType"
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "list"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "itemType"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "itemType"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "type": {
+                    "const": "enum"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "type": {
+                    "const": "list"
+                  },
+                  "itemType": {
+                    "const": "enum"
+                  }
+                },
+                "required": [
+                  "itemType"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "enumValues"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "enumValues"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "type": {
+                    "const": "file"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "type": {
+                    "const": "list"
+                  },
+                  "itemType": {
+                    "const": "file"
+                  }
+                },
+                "required": [
+                  "itemType"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "default"
+              ]
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "contentTypes"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "table"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "default"
+              ]
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "columns"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

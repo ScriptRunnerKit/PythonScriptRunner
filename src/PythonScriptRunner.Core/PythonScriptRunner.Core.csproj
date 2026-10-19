@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\schemas\stage.v1.json" LogicalName="PythonScriptRunner.Schemas.stage.v1.json" Link="Schemas\stage.v1.json" />
+    <EmbeddedResource Include="..\..\schemas\pipeline.v1.json" LogicalName="PythonScriptRunner.Schemas.pipeline.v1.json" Link="Schemas\pipeline.v1.json" />
   </ItemGroup>
 
   <ItemGroup>

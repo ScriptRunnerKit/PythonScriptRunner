@@ -11,6 +11,13 @@ public interface ICatalog
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The definition, or <c>null</c> when not found.</returns>
     ValueTask<StageDefinition?> FindStageAsync(string key, int? version, CancellationToken cancellationToken = default);
+
+    /// <summary>Finds a pipeline version.</summary>
+    /// <param name="key">Pipeline key.</param>
+    /// <param name="version">Exact version, or <c>null</c> for the latest published version.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The definition, or <c>null</c> when not found.</returns>
+    ValueTask<PipelineDefinition?> FindPipelineAsync(string key, int? version, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Resolves the secrets declared by stages.</summary>

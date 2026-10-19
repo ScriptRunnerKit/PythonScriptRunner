@@ -70,4 +70,7 @@ internal static partial class Log
 
     [LoggerMessage(8, LogLevel.Information, "stderr of stage {StageKey} attempt {Attempt}:\n{Output}")]
     public static partial void ScriptStderr(ILogger logger, string stageKey, int attempt, string output);
+
+    [LoggerMessage(9, LogLevel.Warning, "Pipeline {PipelineKey}@{PipelineVersion}: {Warning}")]
+    public static partial void PipelineWarning(ILogger logger, string pipelineKey, int pipelineVersion, string warning);
 }
