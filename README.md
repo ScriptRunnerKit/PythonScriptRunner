@@ -6,8 +6,8 @@ cron e painel Vue opcional.
 
 > Projeto em desenvolvimento. Esta versão entrega o **Core Runner** (execução síncrona de Stages e de
 > trilhas), o SDK Python **`psrunner`**, a **persistência em PostgreSQL** (catálogo versionado e histórico), a
-> **execução assíncrona** com RabbitMQ, worker e agendamento cron e o **painel embutível** (API, tempo real e acesso
-> configurável; a interface Vue chega numa próxima versão).
+> **execução assíncrona** com RabbitMQ, worker e agendamento cron e o **painel embutível** (interface Vue, API, tempo
+> real e acesso configurável).
 
 ## Como funciona
 
@@ -159,7 +159,12 @@ O host `hosts/PythonScriptRunner.WorkerHost` é um worker pronto, configurado po
 ## Painel (Dashboard)
 
 Com `PythonScriptRunner.Dashboard`, o painel é embutido na sua aplicação, no estilo do Hangfire: API interna, atualizações
-em tempo real (SignalR) e a interface servida no prefixo escolhido. Sem `MapPythonScriptRunnerDashboard` não existe painel.
+em tempo real (SignalR) e a interface Vue servida no prefixo escolhido. Sem `MapPythonScriptRunnerDashboard` não existe painel.
+
+A interface (em pt-BR, tema claro/escuro) cobre a visão geral, Etapas (editor Monaco com construtor de campos, testar
+pela fila e publicar), Trilhas (editor visual com *handles* tipados, ou lista editável, testar e publicar), execuções ao
+vivo (fluxo por status, logs, arquivos, linha do tempo, cancelar e reprocessar), agendamentos com prévia do cron,
+auditoria e administração. Ela vai dentro do pacote: não há nada para hospedar à parte.
 
 ```csharp
 builder.Services
@@ -222,6 +227,7 @@ O host `hosts/PythonScriptRunner.DashboardHost` é um painel pronto: login fixo 
 - .NET 10 SDK
 - [uv](https://docs.astral.sh/uv/) no PATH (cria e cacheia um ambiente Python por conjunto de dependências)
 - PostgreSQL 16+ apenas para o pacote de persistência e RabbitMQ 3.13+ para a fila (os testes usam Docker/Testcontainers)
+- Node.js 24 só para compilar em Release ou empacotar o `PythonScriptRunner.Dashboard` (o build embute o painel de `panel/`)
 
 ## Estrutura
 
@@ -233,11 +239,12 @@ O host `hosts/PythonScriptRunner.DashboardHost` é um painel pronto: login fixo 
 | `src/PythonScriptRunner.RabbitMQ` | topologia, relay do outbox, `IRunQueue`, comando público, eventos e assinaturas |
 | `src/PythonScriptRunner.Worker` | execução dos passos enfileirados, *lease*, retry, cancelamento, cron |
 | `src/PythonScriptRunner.Dashboard` | painel embutível: API interna, hub SignalR, modos de acesso (login fixo, filtro, host, local) |
+| `panel` | interface do painel: Vue 3, Vuetify 4, Vue Flow e Monaco (TypeScript, Vite, Vitest) |
 | `src/PythonScriptRunner.Tool` | dotnet tool `psr` (`psr hash-password`) |
 | `hosts` | `WorkerHost`, `DashboardHost` e `ServiceDefaults` (Serilog, OpenTelemetry, health checks) |
 | `python/psrunner` | SDK Python (`@stage`, `Context`, `File`, `StageError`, `psrunner.testing`, CLI) |
 | `schemas` | JSON Schemas do `stage.json`, do `*.pipeline.json` e das mensagens públicas |
-| `tests` | testes .NET (unitários e de integração com Python real) e fixtures de trilha |
+| `tests` | testes .NET (unitários, de integração com Python real e E2E do painel com Playwright) e fixtures de trilha |
 
 ## Desenvolvimento
 
@@ -253,6 +260,30 @@ cd python/psrunner
 uv sync
 uv run pytest
 ```
+
+O painel fica em `panel/` (Node 24). Os builds em Debug embutem uma página provisória; em Release (ou com
+`-p:PsrBuildPanel=true`) o MSBuild roda `npm ci` e `npm run build` e embute `panel/dist`.
+
+```bash
+cd panel
+npm ci
+npm run dev        # Vite em http://localhost:5173/; /api e /hubs vão para o DashboardHost em PSR_DASHBOARD_URL (padrão http://localhost:5080, prefixo /psr)
+npm test           # Vitest
+npm run lint       # ESLint + Prettier
+npm run build      # checagem de tipos, build e orçamento do bundle inicial (≤ 500 KB gzip)
+npm run api        # regera src/api/schema.d.ts a partir do snapshot OpenAPI
+```
+
+Os testes E2E do painel sobem o `DashboardHost` com 4 usuários de login fixo, um worker, PostgreSQL e RabbitMQ e dirigem
+o Chromium com Playwright (precisam de Docker e do painel embutido):
+
+```bash
+dotnet build tests/PythonScriptRunner.Panel.E2E.Tests -p:PsrBuildPanel=true
+dotnet test --project tests/PythonScriptRunner.Panel.E2E.Tests --no-build   # PSR_E2E_HEADED=1 mostra o navegador
+```
+
+Quando um teste falha, o *trace* do Playwright fica em `TestResults/traces` ao lado do assembly de testes
+(`npx playwright show-trace <arquivo>.zip`).
 
 O teste de desempenho do painel usa ~200 mil execuções; `PSR_PERF_RUNS_PER_DAY=50000` roda o volume médio completo (90 dias).
 O documento OpenAPI do painel é comparado com `tests/PythonScriptRunner.Dashboard.Tests/Snapshots/openapi-v1.verified.json`;
