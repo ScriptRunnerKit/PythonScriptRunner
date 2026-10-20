@@ -17,6 +17,7 @@
     <Project Path="tests/PythonScriptRunner.Core.Tests/PythonScriptRunner.Core.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Dashboard.Tests/PythonScriptRunner.Dashboard.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.EntityFrameworkCore.Tests/PythonScriptRunner.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="tests/PythonScriptRunner.Panel.E2E.Tests/PythonScriptRunner.Panel.E2E.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.RabbitMQ.Tests/PythonScriptRunner.RabbitMQ.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Worker.Tests/PythonScriptRunner.Worker.Tests.csproj" />
   </Folder>
