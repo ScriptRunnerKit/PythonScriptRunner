@@ -160,7 +160,11 @@ public sealed class StepExecutionTests(PostgresFixture postgres, BrokerFixture b
             attempts.Add(run.Steps.Single().Attempts.Single());
         }
 
-        var peak = attempts.Max(a => attempts.Count(other => other.StartedAt < a.FinishedAt && a.StartedAt < other.FinishedAt));
+        // Most attempts running at the same instant (a finish and a start at the same moment do not overlap).
+        var peak = attempts
+            .SelectMany(a => (IEnumerable<(DateTimeOffset At, int Delta)>)[(a.StartedAt, 1), (a.FinishedAt!.Value, -1)])
+            .OrderBy(e => e.At).ThenBy(e => e.Delta)
+            .Aggregate((Running: 0, Peak: 0), (state, e) => (state.Running + e.Delta, Math.Max(state.Peak, state.Running + e.Delta))).Peak;
         peak.ShouldBe(2, string.Join(" | ", attempts.Select(a => $"{a.StartedAt:HH:mm:ss.ffffff}-{a.FinishedAt:HH:mm:ss.ffffff} {a.WorkerId}")));
     }
 
