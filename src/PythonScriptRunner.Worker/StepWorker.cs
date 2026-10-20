@@ -23,9 +23,15 @@ internal sealed class StepWorker(
     WorkerOptions options,
     WorkerMetrics metrics,
     TimeProvider time,
-    ILogger<StepWorker> logger) : IHostedService, IDisposable
+    ILogger<StepWorker> logger) : IHostedService
 {
+    // Never disposed: a stop can still be running when the host disposes its services (stop called twice); a plain
+    // CancellationTokenSource holds no unmanaged resources.
     private readonly CancellationTokenSource _stopping = new();
+
+    // The prefetch limits deliveries per channel; after a connection recovery the new channel receives more while the old
+    // deliveries still run, so the limit of processes is enforced here too (AC-8).
+    private readonly SemaphoreSlim _slots = new(options.MaxConcurrency, options.MaxConcurrency);
     private QueueConsumer? _consumer;
     private Task? _running;
 
@@ -69,8 +75,6 @@ internal sealed class StepWorker(
         await consumer.DisposeAsync().ConfigureAwait(false);
     }
 
-    public void Dispose() => _stopping.Dispose();
-
     /// <param name="delivery">The message.</param>
     /// <param name="abandon">Cancelled when the shutdown grace period is over.</param>
     internal async Task<DeliveryOutcome> HandleAsync(PsrDelivery delivery, CancellationToken abandon)
@@ -96,25 +100,33 @@ internal sealed class StepWorker(
         }
 
         using var activity = StartActivity(delivery, command);
-        var claimed = await RetryAsync("claim step", () => lifecycle.ClaimStepAsync(command, WorkerId, options.LeaseDuration, abandon), abandon)
-            .ConfigureAwait(false);
-        if (claimed is null)
-        {
-            // Duplicate, stale (already executed or recovered elsewhere) or cancelled: nothing to do.
-            return DeliveryOutcome.Ack;
-        }
-
-        RecordQueueWait(delivery);
-        activity?.SetTag("psr.step.key", claimed.StepKey);
-        activity?.SetTag("psr.stage.key", claimed.Stage.Key);
-        metrics.StepStarted();
+        await _slots.WaitAsync(abandon).ConfigureAwait(false);
         try
         {
-            return await ExecuteAsync(claimed, abandon).ConfigureAwait(false);
+            var claimed = await RetryAsync("claim step", () => lifecycle.ClaimStepAsync(command, WorkerId, options.LeaseDuration, abandon), abandon)
+                .ConfigureAwait(false);
+            if (claimed is null)
+            {
+                // Duplicate, stale (already executed or recovered elsewhere) or cancelled: nothing to do.
+                return DeliveryOutcome.Ack;
+            }
+
+            RecordQueueWait(delivery);
+            activity?.SetTag("psr.step.key", claimed.StepKey);
+            activity?.SetTag("psr.stage.key", claimed.Stage.Key);
+            metrics.StepStarted();
+            try
+            {
+                return await ExecuteAsync(claimed, abandon).ConfigureAwait(false);
+            }
+            finally
+            {
+                metrics.StepEnded();
+            }
         }
         finally
         {
-            metrics.StepEnded();
+            _slots.Release();
         }
     }
 

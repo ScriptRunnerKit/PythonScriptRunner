@@ -11,7 +11,7 @@ public sealed class SchedulerTests(PostgresFixture postgres, BrokerFixture broke
     [Fact]
     public async Task Spec006_AC10_TwoSchedulers_FireEachOccurrenceOnce()
     {
-        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var time = new FakeTimeProvider(HalfPastTheMinute());
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python, time);
         var first = await env.StartHostAsync(s => s.Scheduler = true);
         await env.StartHostAsync(s => s.Scheduler = true);
@@ -56,7 +56,7 @@ public sealed class SchedulerTests(PostgresFixture postgres, BrokerFixture broke
     [Fact]
     public async Task Spec006_AC12_LatestVersion_FollowsPublicationsAndPinnedVersionDoesNot()
     {
-        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var time = new FakeTimeProvider(HalfPastTheMinute());
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python, time);
         var host = await env.StartHostAsync(s => s.Scheduler = true);
         var latest = await CreateEchoScheduleAsync(host, "*/1 * * * *");
@@ -145,7 +145,7 @@ public sealed class SchedulerTests(PostgresFixture postgres, BrokerFixture broke
     [Fact]
     public async Task NewRequiredInput_WarnsOnPublicationAndRejectsTheFiringButKeepsTheSchedule()
     {
-        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var time = new FakeTimeProvider(HalfPastTheMinute());
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python, time);
         var host = await env.StartHostAsync(s => s.Scheduler = true);
         var schedule = await CreateEchoScheduleAsync(host, "*/1 * * * *");
@@ -165,6 +165,13 @@ public sealed class SchedulerTests(PostgresFixture postgres, BrokerFixture broke
         stored.LastError.ShouldNotBeNull();
         stored.NextRunAt.ShouldNotBeNull();
         (await CountRunsAsync(env, schedule)).ShouldBe(0);
+    }
+
+    /// <summary>Now, moved to second 30 of its minute: each advance of one minute then crosses exactly one occurrence of "*/1".</summary>
+    private static DateTimeOffset HalfPastTheMinute()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMinute)).AddSeconds(30);
     }
 
     private static ScheduleData EchoSchedule(string cron) => new() { Name = "eco", Cron = cron, Inputs = new JsonObject { ["texto"] = "agendado" } };

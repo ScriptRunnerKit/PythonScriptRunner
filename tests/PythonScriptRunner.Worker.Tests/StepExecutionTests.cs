@@ -161,7 +161,7 @@ public sealed class StepExecutionTests(PostgresFixture postgres, BrokerFixture b
         }
 
         var peak = attempts.Max(a => attempts.Count(other => other.StartedAt < a.FinishedAt && a.StartedAt < other.FinishedAt));
-        peak.ShouldBe(2);
+        peak.ShouldBe(2, string.Join(" | ", attempts.Select(a => $"{a.StartedAt:HH:mm:ss.ffffff}-{a.FinishedAt:HH:mm:ss.ffffff} {a.WorkerId}")));
     }
 
     [Fact]

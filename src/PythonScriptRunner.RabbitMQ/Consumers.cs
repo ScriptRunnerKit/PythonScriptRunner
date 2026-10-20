@@ -8,8 +8,10 @@ using PythonScriptRunner.EntityFrameworkCore;
 namespace PythonScriptRunner.RabbitMQ;
 
 /// <summary>Runs one <see cref="QueueConsumer"/> for the lifetime of the host.</summary>
-internal abstract class ConsumerService(PsrBroker broker, ILogger logger) : IHostedService, IDisposable
+internal abstract class ConsumerService(PsrBroker broker, ILogger logger) : IHostedService
 {
+    // Never disposed: a stop can still be running when the host disposes its services (stop called twice); a plain
+    // CancellationTokenSource holds no unmanaged resources.
     private readonly CancellationTokenSource _stopping = new();
     private QueueConsumer? _consumer;
     private Task? _running;
@@ -49,8 +51,6 @@ internal abstract class ConsumerService(PsrBroker broker, ILogger logger) : IHos
 
         await consumer.DisposeAsync().ConfigureAwait(false);
     }
-
-    public void Dispose() => _stopping.Dispose();
 
     protected abstract QueueConsumerSettings Settings();
 
