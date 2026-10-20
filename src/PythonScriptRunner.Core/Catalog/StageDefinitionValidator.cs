@@ -3,6 +3,18 @@ using PythonScriptRunner.Core.Values;
 
 namespace PythonScriptRunner.Core.Catalog;
 
+/// <summary>Public validator of stage definitions (used by the panel and by publication).</summary>
+internal sealed class StageValidator : IStageValidator
+{
+    public const string Code = "STAGE_DEFINITION";
+
+    public ValidationReport Validate(StageDefinition stage)
+    {
+        ArgumentNullException.ThrowIfNull(stage);
+        return new ValidationReport([.. StageDefinitionValidator.Validate(stage).Select(e => new ValidationIssue(Code, e))], []);
+    }
+}
+
 /// <summary>Validates a stage definition (same rules as <c>schemas/stage.v1.json</c> plus semantic checks).</summary>
 internal static partial class StageDefinitionValidator
 {

@@ -5,7 +5,7 @@ com contrato de entrada/saída, trilhas (**Pipelines**), execução assíncrona 
 cron e painel Vue opcional.
 
 > Projeto em desenvolvimento. Esta versão entrega o **Core Runner** (execução síncrona de Stages e de
-> trilhas) e o SDK Python **`psrunner`**.
+> trilhas), o SDK Python **`psrunner`** e a **persistência em PostgreSQL** (catálogo versionado e histórico).
 
 ## Como funciona
 
@@ -89,10 +89,42 @@ double[] termos = result.GetStepOutput<double[]>("termos", "termos");   // depur
 A mesma trilha pode ser definida em C# com `AddPipeline("chave", p => p.Input(...).Step(...).Output(...))`.
 Se um passo falhar, os seguintes ficam como `Skipped` e a execução termina `Failed`.
 
+## Persistência (PostgreSQL)
+
+Com o pacote `PythonScriptRunner.EntityFrameworkCore`, Stages e trilhas passam a viver no banco (schema `psr`) com
+versões imutáveis (rascunho → publicado → arquivado), e **toda** execução fica registrada: passos, tentativas, cauda
+de stdout/stderr e arquivos (em `bytea`, lidos e gravados em streaming).
+
+```csharp
+builder.Services
+    .AddPythonScriptRunner()
+    .AddEntityFrameworkCore(o =>
+    {
+        o.UseNpgsql(builder.Configuration.GetConnectionString("psr")!);   // PostgreSQL 16+
+        o.Retention.Artifacts = TimeSpan.FromDays(7);                     // arquivos
+        o.Retention.Runs = TimeSpan.FromDays(90);                         // histórico
+    });
+builder.Services.AddHealthChecks().AddPythonScriptRunnerDatabase();
+
+var app = builder.Build();
+await app.Services.MigratePythonScriptRunnerAsync();   // explícito; ou GeneratePythonScriptRunnerMigrationScriptAsync()
+```
+
+- **Catálogo:** `ICatalogAdmin` cria rascunhos (concorrência otimista), publica (verifica a sintaxe com o Python
+  declarado e trava as dependências com `uv pip compile --generate-hashes`), arquiva, exclui, testa rascunhos e
+  importa/exporta zip no formato de pasta.
+- **Execuções:** `IRunManager` consulta (paginação keyset), cancela e reprocessa uma execução que falhou — os passos
+  que deram certo reaproveitam as saídas e o que falhou ganha uma nova tentativa. `RunOptions.IdempotencyKey` devolve
+  a mesma execução por 24 h.
+- **Retenção:** o histórico é particionado (semana para execuções, dia para conteúdo de arquivos, mês para auditoria);
+  um job de manutenção cria partições à frente e remove as antigas. Uma trilha pode encurtar a retenção.
+- **Auditoria:** ações humanas (`Actor.User(...)`) ficam em `psr.audit_events`; disparos automáticos ficam na própria execução.
+
 ## Requisitos
 
 - .NET 10 SDK
 - [uv](https://docs.astral.sh/uv/) no PATH (cria e cacheia um ambiente Python por conjunto de dependências)
+- PostgreSQL 16+ apenas para o pacote de persistência (os testes usam Docker/Testcontainers)
 
 ## Estrutura
 
@@ -100,6 +132,7 @@ Se um passo falhar, os seguintes ficam como `Skipped` e a execução termina `Fa
 |-------|----------|
 | `src/PythonScriptRunner.Abstractions` | contratos públicos (tipos de campo, `StageDefinition`, `RunResult`, `PsrFile`, interfaces) |
 | `src/PythonScriptRunner.Core` | catálogos (código e pasta), validação, ambientes uv, executor de processos, runner |
+| `src/PythonScriptRunner.EntityFrameworkCore` | PostgreSQL: catálogo versionado, histórico, arquivos, idempotência, outbox, auditoria, retenção |
 | `python/psrunner` | SDK Python (`@stage`, `Context`, `File`, `StageError`, `psrunner.testing`, CLI) |
 | `schemas` | JSON Schemas do `stage.json` e do `*.pipeline.json` |
 | `tests` | testes .NET (unitários e de integração com Python real) e fixtures de trilha |
@@ -109,6 +142,7 @@ Se um passo falhar, os seguintes ficam como `Skipped` e a execução termina `Fa
 ```bash
 dotnet build
 dotnet test --project tests/PythonScriptRunner.Core.Tests
+dotnet test --project tests/PythonScriptRunner.EntityFrameworkCore.Tests   # precisa de Docker
 
 cd python/psrunner
 uv sync

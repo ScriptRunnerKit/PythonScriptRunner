@@ -93,6 +93,7 @@ public sealed class RunResult : IAsyncDisposable
     /// <param name="files">Output files of the run by field name.</param>
     /// <param name="error">Failure, when the run did not succeed.</param>
     /// <param name="cleanup">Deletes local files when the result is disposed.</param>
+    /// <param name="deduplicated">Whether this is an earlier run returned for the same idempotency key.</param>
     public RunResult(
         RunId id,
         RunKind kind,
@@ -102,7 +103,8 @@ public sealed class RunResult : IAsyncDisposable
         JsonObject? outputs,
         IReadOnlyDictionary<string, IReadOnlyList<PsrFile>>? files,
         RunError? error,
-        Func<ValueTask>? cleanup = null)
+        Func<ValueTask>? cleanup = null,
+        bool deduplicated = false)
     {
         Id = id;
         Kind = kind;
@@ -113,6 +115,7 @@ public sealed class RunResult : IAsyncDisposable
         _files = files ?? new Dictionary<string, IReadOnlyList<PsrFile>>();
         Error = error;
         _cleanup = cleanup;
+        Deduplicated = deduplicated;
     }
 
     /// <summary>Run identifier.</summary>
@@ -121,8 +124,17 @@ public sealed class RunResult : IAsyncDisposable
     /// <summary>What was executed.</summary>
     public RunKind Kind { get; }
 
-    /// <summary>Final status: Succeeded, Failed or Cancelled.</summary>
+    /// <summary>
+    /// Final status: Succeeded, Failed or Cancelled. A deduplicated result reports the current status of the earlier run,
+    /// which may still be running.
+    /// </summary>
     public RunStatus Status { get; }
+
+    /// <summary>Whether this is an earlier run returned because the same idempotency key was used within 24 hours.</summary>
+    public bool Deduplicated { get; }
+
+    /// <summary>Output files of the run by declared output name.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<PsrFile>> Files => _files;
 
     /// <summary>Failure, when the run did not succeed.</summary>
     public RunError? Error { get; }

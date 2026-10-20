@@ -27,10 +27,20 @@ public sealed class PsrFile
 
     private readonly string? _path;
     private readonly ReadOnlyMemory<byte>? _bytes;
+    private readonly Func<CancellationToken, Task<Stream>>? _opener;
+    private readonly long? _knownLength;
     private Stream? _stream;
     private string? _sha256;
 
-    private PsrFile(string fileName, string contentType, string? path, ReadOnlyMemory<byte>? bytes, Stream? stream, string? sha256)
+    private PsrFile(
+        string fileName,
+        string contentType,
+        string? path,
+        ReadOnlyMemory<byte>? bytes,
+        Stream? stream,
+        string? sha256,
+        Func<CancellationToken, Task<Stream>>? opener = null,
+        long? knownLength = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
@@ -40,6 +50,8 @@ public sealed class PsrFile
         _bytes = bytes;
         _stream = stream;
         _sha256 = sha256;
+        _opener = opener;
+        _knownLength = knownLength;
     }
 
     /// <summary>A file on disk.</summary>
@@ -90,6 +102,38 @@ public sealed class PsrFile
     public static PsrFile FromProducedFile(string path, string fileName, string contentType, string sha256) =>
         new(fileName, contentType, Path.GetFullPath(path), null, null, sha256);
 
+    /// <summary>A stored file (e.g. in the database) that is streamed on demand.</summary>
+    /// <param name="artifactId">Identifier of the stored file.</param>
+    /// <param name="fileName">File name.</param>
+    /// <param name="contentType">MIME type.</param>
+    /// <param name="length">Size in bytes.</param>
+    /// <param name="sha256">SHA-256 as lowercase hex.</param>
+    /// <param name="open">Opens the content; called once per read.</param>
+    public static PsrFile FromArtifact(
+        ArtifactId artifactId, string fileName, string contentType, long length, string sha256, Func<CancellationToken, Task<Stream>> open)
+    {
+        ArgumentNullException.ThrowIfNull(open);
+        var file = new PsrFile(fileName, contentType, null, null, null, sha256, open, length);
+        file.AttachArtifact(artifactId);
+        return file;
+    }
+
+    /// <summary>Identifier of the stored copy of this file, when a persistence package stored it.</summary>
+    public ArtifactId? ArtifactId { get; private set; }
+
+    /// <summary>Associates the file with its stored copy (used by persistence packages).</summary>
+    /// <param name="artifactId">Identifier of the stored file.</param>
+    /// <exception cref="InvalidOperationException">The file is already associated with another stored file.</exception>
+    public void AttachArtifact(ArtifactId artifactId)
+    {
+        if (ArtifactId is { } current && current != artifactId)
+        {
+            throw new InvalidOperationException($"File '{FileName}' is already stored as artifact {current}.");
+        }
+
+        ArtifactId = artifactId;
+    }
+
     /// <summary>File name (without directories).</summary>
     public string FileName { get; }
 
@@ -112,6 +156,11 @@ public sealed class PsrFile
             if (_bytes is { } bytes)
             {
                 return bytes.Length;
+            }
+
+            if (_knownLength is { } known)
+            {
+                return known;
             }
 
             return _stream is { CanSeek: true } stream ? stream.Length - stream.Position : null;
@@ -157,6 +206,11 @@ public sealed class PsrFile
         if (_bytes is { } bytes)
         {
             return Task.FromResult<Stream>(new MemoryStream(bytes.ToArray(), writable: false));
+        }
+
+        if (_opener is not null)
+        {
+            return _opener(cancellationToken);
         }
 
         var stream = Interlocked.Exchange(ref _stream, null)
