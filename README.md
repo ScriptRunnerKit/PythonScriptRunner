@@ -5,8 +5,9 @@ com contrato de entrada/saída, trilhas (**Pipelines**), execução assíncrona 
 cron e painel Vue opcional.
 
 > Projeto em desenvolvimento. Esta versão entrega o **Core Runner** (execução síncrona de Stages e de
-> trilhas), o SDK Python **`psrunner`**, a **persistência em PostgreSQL** (catálogo versionado e histórico) e a
-> **execução assíncrona** com RabbitMQ, worker e agendamento cron.
+> trilhas), o SDK Python **`psrunner`**, a **persistência em PostgreSQL** (catálogo versionado e histórico), a
+> **execução assíncrona** com RabbitMQ, worker e agendamento cron e o **painel embutível** (API, tempo real e acesso
+> configurável; a interface Vue chega numa próxima versão).
 
 ## Como funciona
 
@@ -155,6 +156,67 @@ O host `hosts/PythonScriptRunner.WorkerHost` é um worker pronto, configurado po
 (`ConnectionStrings__psr`, `ConnectionStrings__rabbitmq`, `PythonScriptRunner__Worker__MaxConcurrency`,
 `PythonScriptRunner__Secrets__<NOME>`, `PSR_AUTO_MIGRATE=true`), com `/health/live`, `/health/ready`, logs JSON e OTLP.
 
+## Painel (Dashboard)
+
+Com `PythonScriptRunner.Dashboard`, o painel é embutido na sua aplicação, no estilo do Hangfire: API interna, atualizações
+em tempo real (SignalR) e a interface servida no prefixo escolhido. Sem `MapPythonScriptRunnerDashboard` não existe painel.
+
+```csharp
+builder.Services
+    .AddPythonScriptRunner()
+    .AddEntityFrameworkCore(o => o.UseNpgsql(builder.Configuration.GetConnectionString("psr")!))
+    .AddRabbitMq(o => o.ConnectionString = builder.Configuration.GetConnectionString("rabbitmq"))
+    .AddDashboard(o => o.UseFixedLogin(login => login.BindConfiguration()));   // seção PythonScriptRunner:Dashboard:Login
+
+var app = builder.Build();
+app.MapPythonScriptRunnerDashboard("/psr");   // API em /psr/api, tempo real em /psr/hubs/runs, painel em /psr/
+```
+
+Escolha **um** modo de acesso; os papéis são cumulativos: `Reader` (vê tudo) → `Executor` (dispara, cancela,
+reprocessa) → `Author` (edita, testa, publica, importa, agenda) → `Admin` (exclui, retenção, segredos, auditoria).
+
+| Modo | Configuração |
+|------|--------------|
+| Login fixo | `o.UseFixedLogin(l => l.BindConfiguration())` com usuários na configuração (abaixo) ou `l.Users` em código |
+| Filtro próprio | `o.UseAuthorizationFilter<MeuFiltro>()`: `IDashboardAuthorizationFilter` devolve `DashboardUser(nome, papel)` ou `null` |
+| Autenticação do host | `o.UseHostAuthentication(r => { r.Reader = p => p.RequireRole("psr-leitor"); /* Executor, Author, Admin */ r.LoginUrl = "/conta/entrar?returnUrl={returnUrl}"; })` |
+| Somente local | `o.AllowLocalRequests = true` — só em Development (fora dele a inicialização falha); soma-se a um modo principal |
+
+```json
+"PythonScriptRunner": {
+  "Dashboard": {
+    "Login": {
+      "Users": [
+        { "Name": "ana", "Role": "Admin", "PasswordHash": "AQAAAAIAAYagAAAAE..." },
+        { "Name": "bruno", "Role": "Reader", "PasswordHash": "AQAAAAIAAYagAAAAE..." }
+      ]
+    }
+  }
+}
+```
+
+A senha nunca vai para a configuração, só o hash (PBKDF2, formato do ASP.NET Identity), gerado pela ferramenta `psr`:
+
+```bash
+dotnet tool install -g PythonScriptRunner.Tool
+psr hash-password                              # digita a senha duas vezes, sem eco
+echo "senha" | psr hash-password --stdin       # em scripts
+```
+
+No login fixo a sessão é um cookie `psr.session` (HttpOnly, `SameSite=Lax`) de 8 h deslizantes e no máximo 24 h; 5
+falhas seguidas bloqueiam o usuário por 15 min e um IP pode tentar 10 vezes por minuto. Alterações na configuração valem
+sem reiniciar (usuário removido ou senha trocada perde a sessão; papel novo vale na hora). As chaves do cookie ficam em
+`psr.dashboard_keys`, então a sessão vale em todas as instâncias e sobrevive a reinícios.
+
+Na API, requisições que alteram algo exigem o cabeçalho `X-PSR-Request: 1`, edições usam `ETag`/`If-Match` e erros
+seguem `ProblemDetails` com `code`. Em Development, o documento OpenAPI (interno) fica em `/psr/api/openapi/v1.json`.
+
+O host `hosts/PythonScriptRunner.DashboardHost` é um painel pronto: login fixo por variáveis de ambiente
+(`PythonScriptRunner__Dashboard__Login__Users__0__Name`, `__Role`, `__PasswordHash`) ou OpenID Connect com
+`Oidc__Authority`, `Oidc__ClientId` e `Oidc__ClientSecret` (papéis pela claim `Dashboard__RoleClaim`, padrão `roles`, e
+`Dashboard__Roles__Reader|Executor|Author|Admin`). Também aceita `Dashboard__PathPrefix` (padrão `/psr`),
+`ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` atrás de proxy e `PSR_AUTO_MIGRATE=true`.
+
 ## Requisitos
 
 - .NET 10 SDK
@@ -170,7 +232,9 @@ O host `hosts/PythonScriptRunner.WorkerHost` é um worker pronto, configurado po
 | `src/PythonScriptRunner.EntityFrameworkCore` | PostgreSQL: catálogo versionado, histórico, arquivos, idempotência, outbox, auditoria, retenção, agendamentos e ciclo das execuções enfileiradas |
 | `src/PythonScriptRunner.RabbitMQ` | topologia, relay do outbox, `IRunQueue`, comando público, eventos e assinaturas |
 | `src/PythonScriptRunner.Worker` | execução dos passos enfileirados, *lease*, retry, cancelamento, cron |
-| `hosts` | `WorkerHost` e `ServiceDefaults` (Serilog, OpenTelemetry, health checks) |
+| `src/PythonScriptRunner.Dashboard` | painel embutível: API interna, hub SignalR, modos de acesso (login fixo, filtro, host, local) |
+| `src/PythonScriptRunner.Tool` | dotnet tool `psr` (`psr hash-password`) |
+| `hosts` | `WorkerHost`, `DashboardHost` e `ServiceDefaults` (Serilog, OpenTelemetry, health checks) |
 | `python/psrunner` | SDK Python (`@stage`, `Context`, `File`, `StageError`, `psrunner.testing`, CLI) |
 | `schemas` | JSON Schemas do `stage.json`, do `*.pipeline.json` e das mensagens públicas |
 | `tests` | testes .NET (unitários e de integração com Python real) e fixtures de trilha |
@@ -183,11 +247,16 @@ dotnet test --project tests/PythonScriptRunner.Core.Tests
 dotnet test --project tests/PythonScriptRunner.EntityFrameworkCore.Tests   # precisa de Docker
 dotnet test --project tests/PythonScriptRunner.RabbitMQ.Tests              # precisa de Docker
 dotnet test --project tests/PythonScriptRunner.Worker.Tests                # precisa de Docker
+dotnet test --project tests/PythonScriptRunner.Dashboard.Tests             # precisa de Docker
 
 cd python/psrunner
 uv sync
 uv run pytest
 ```
+
+O teste de desempenho do painel usa ~200 mil execuções; `PSR_PERF_RUNS_PER_DAY=50000` roda o volume médio completo (90 dias).
+O documento OpenAPI do painel é comparado com `tests/PythonScriptRunner.Dashboard.Tests/Snapshots/openapi-v1.verified.json`;
+depois de revisar uma mudança intencional, `PSR_ACCEPT_SNAPSHOTS=1` atualiza o snapshot.
 
 ## Licença
 
