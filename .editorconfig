@@ -14,6 +14,10 @@ indent_size = 2
 [*.md]
 trim_trailing_whitespace = false
 
+# Painel Vue (panel/): convenção do ecossistema JavaScript.
+[panel/**.{ts,mts,mjs,js,vue,css,html}]
+indent_size = 2
+
 [*.cs]
 # Namespaces and usings
 csharp_style_namespace_declarations = file_scoped:warning

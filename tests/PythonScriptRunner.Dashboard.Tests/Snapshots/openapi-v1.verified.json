@@ -238,35 +238,35 @@
         "operationId": "ListAudit",
         "parameters": [
           {
-            "name": "Actor",
+            "name": "actor",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "Action",
+            "name": "action",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "EntityType",
+            "name": "entityType",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "EntityKey",
+            "name": "entityKey",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "From",
+            "name": "from",
             "in": "query",
             "schema": {
               "type": "string",
@@ -274,7 +274,7 @@
             }
           },
           {
-            "name": "To",
+            "name": "to",
             "in": "query",
             "schema": {
               "type": "string",
@@ -282,14 +282,14 @@
             }
           },
           {
-            "name": "Cursor",
+            "name": "cursor",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "Limit",
+            "name": "limit",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -2002,42 +2002,42 @@
         "operationId": "ListRuns",
         "parameters": [
           {
-            "name": "PipelineKey",
+            "name": "pipelineKey",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "StageKey",
+            "name": "stageKey",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "Kind",
+            "name": "kind",
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/RunKind"
             }
           },
           {
-            "name": "Status",
+            "name": "status",
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/RunStatus"
             }
           },
           {
-            "name": "Trigger",
+            "name": "trigger",
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/RunTrigger"
             }
           },
           {
-            "name": "From",
+            "name": "from",
             "in": "query",
             "schema": {
               "type": "string",
@@ -2045,7 +2045,7 @@
             }
           },
           {
-            "name": "To",
+            "name": "to",
             "in": "query",
             "schema": {
               "type": "string",
@@ -2053,14 +2053,14 @@
             }
           },
           {
-            "name": "Cursor",
+            "name": "cursor",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "Limit",
+            "name": "limit",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -3114,8 +3114,7 @@
           "Reader",
           "Executor",
           "Author",
-          "Admin",
-          null
+          "Admin"
         ]
       },
       "ErrorKind": {
@@ -5183,7 +5182,8 @@
           "description",
           "latestPublishedVersion",
           "draftVersion",
-          "updatedAt"
+          "updatedAt",
+          "usedByPipelines"
         ],
         "type": "object",
         "properties": {
@@ -5226,6 +5226,15 @@
             "type": "string",
             "description": "Last change.",
             "format": "date-time"
+          },
+          "usedByPipelines": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Distinct pipelines with a published version that uses any version of the stage.",
+            "format": "int32"
           }
         },
         "description": "A stage in a list."
@@ -5614,8 +5623,7 @@
         "enum": [
           "Draft",
           "Published",
-          "Archived",
-          null
+          "Archived"
         ]
       },
       "VersionSummary": {

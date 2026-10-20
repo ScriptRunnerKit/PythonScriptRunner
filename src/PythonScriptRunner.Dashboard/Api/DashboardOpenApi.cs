@@ -47,6 +47,12 @@ internal static class DashboardOpenApi
             {
                 DescribeBindingSource(schema);
             }
+            else if ((Nullable.GetUnderlyingType(type) ?? type).IsEnum && schema.Enum is { Count: > 0 } values)
+            {
+                // An optional enum query parameter (e.g. ?status=) makes the generator add null to the shared component;
+                // the values in responses are never null.
+                schema.Enum = [.. values.Where(v => v is not null)];
+            }
 
             return Task.CompletedTask;
         });

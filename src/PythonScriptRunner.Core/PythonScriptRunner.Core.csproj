@@ -21,6 +21,7 @@
     <InternalsVisibleTo Include="PythonScriptRunner.RabbitMQ.Tests" />
     <InternalsVisibleTo Include="PythonScriptRunner.Worker.Tests" />
     <InternalsVisibleTo Include="PythonScriptRunner.Dashboard.Tests" />
+    <InternalsVisibleTo Include="PythonScriptRunner.Panel.E2E.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -124,6 +125,13 @@ internal static class AdminEndpoints
     }
 }
 
-/// <summary>Filters of <c>GET /audit</c>.</summary>
+/// <summary>Filters of <c>GET /audit</c> (camelCase in the query, like the rest of the API).</summary>
 internal sealed record AuditListQuery(
-    string? Actor, string? Action, string? EntityType, string? EntityKey, DateTimeOffset? From, DateTimeOffset? To, string? Cursor, int? Limit);
+    [FromQuery(Name = "actor")] string? Actor,
+    [FromQuery(Name = "action")] string? Action,
+    [FromQuery(Name = "entityType")] string? EntityType,
+    [FromQuery(Name = "entityKey")] string? EntityKey,
+    [FromQuery(Name = "from")] DateTimeOffset? From,
+    [FromQuery(Name = "to")] DateTimeOffset? To,
+    [FromQuery(Name = "cursor")] string? Cursor,
+    [FromQuery(Name = "limit")] int? Limit);

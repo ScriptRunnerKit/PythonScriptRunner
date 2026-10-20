@@ -59,7 +59,12 @@ internal sealed partial class EfCatalogAdmin(
                 .Select(s => new StageSummary(
                     s.Key, s.Name, s.Description, s.LatestPublishedVersion,
                     s.Versions.Where(v => v.Status == VersionStatus.Draft).Select(v => (int?)v.Version).FirstOrDefault(),
-                    s.UpdatedAt))
+                    s.UpdatedAt,
+                    db.PipelineSteps
+                        .Where(step => step.StageVersion.StageId == s.Id)
+                        .Join(db.PipelineVersions.Where(v => v.Status == VersionStatus.Published), step => step.PipelineVersionId, v => v.Id, (_, v) => v.PipelineId)
+                        .Distinct()
+                        .Count()))
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
             return new Page<StageSummary>(items, pageNumber, pageSize, total);
         }

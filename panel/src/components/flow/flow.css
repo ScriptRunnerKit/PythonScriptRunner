@@ -1,0 +1,167 @@
+.flow-canvas {
+  position: relative;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+}
+
+.flow-canvas .vue-flow__node-step,
+.flow-canvas .vue-flow__node-io {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  width: auto;
+}
+
+.step-node,
+.io-node {
+  min-width: 220px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  border: 2px solid rgba(var(--v-border-color), 0.4);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+}
+
+.io-node--inputs,
+.io-node--outputs {
+  border-style: dashed;
+}
+
+.step-node__header,
+.io-node__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.step-node__order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.step-node__title {
+  flex: 1;
+}
+
+.step-node__ports {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0 8px;
+}
+
+.step-node__port,
+.io-node__port {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 12px;
+}
+
+.step-node__port--out,
+.io-node--inputs .io-node__port {
+  justify-content: flex-end;
+}
+
+.step-node__port-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+  padding: 0;
+}
+
+button.step-node__port-label {
+  cursor: pointer;
+}
+
+.step-node__port--implicit .step-node__port-label {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.io-node__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.io-node__drop {
+  position: relative;
+  padding: 4px 12px 8px;
+  opacity: 0.8;
+}
+
+.flow-canvas .vue-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: rgb(var(--v-theme-primary));
+  border: 2px solid rgb(var(--v-theme-surface));
+}
+
+.flow-canvas .vue-flow__handle.handle--disabled {
+  background: rgba(var(--v-theme-on-surface), 0.25);
+  cursor: not-allowed;
+}
+
+.flow-canvas .vue-flow__edge.edge--implicit .vue-flow__edge-path {
+  stroke-dasharray: 6 4;
+  opacity: 0.6;
+}
+
+/* Fluxo ao vivo: cor por status e nó em execução pulsando (spec 008). */
+.vue-flow__node.step--succeeded .step-node {
+  border-color: rgb(var(--v-theme-success));
+}
+
+.vue-flow__node.step--failed .step-node,
+.vue-flow__node.step--timedout .step-node {
+  border-color: rgb(var(--v-theme-error));
+}
+
+.vue-flow__node.step--running .step-node {
+  border-color: rgb(var(--v-theme-info));
+  animation: psr-pulse 1.4s ease-in-out infinite;
+}
+
+.vue-flow__node.step--queued .step-node,
+.vue-flow__node.step--pending .step-node {
+  border-color: rgb(var(--v-theme-warning));
+}
+
+.vue-flow__node.step--cancelled .step-node,
+.vue-flow__node.step--skipped .step-node {
+  opacity: 0.6;
+}
+
+@keyframes psr-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-info), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(var(--v-theme-info), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vue-flow__node.step--running .step-node {
+    animation: none;
+  }
+}

@@ -162,6 +162,26 @@ public sealed class CatalogAdminTests(PostgresFixture postgres, PythonFixture py
             .Code.ShouldBe(PsrErrorCodes.ImportInvalid);
     }
 
+    [Fact]
+    public async Task StageList_CountsTheDistinctPipelinesWithAPublishedVersionThatUseTheStage()
+    {
+        await using var host = await PsrTestHost.CreateAsync(postgres, python);
+        await host.PublishStageAsync("eco", Echo, [Text("texto")], [Text("texto")]);
+        await host.PublishStageAsync("solta", Echo, [Text("texto")], [Text("texto")]);
+        await host.PublishPipelineAsync("usa-eco", EchoPipeline());
+        await host.PublishPipelineAsync("duas-versoes", EchoPipeline());
+        var second = await host.Admin.CreatePipelineDraftFromAsync("duas-versoes", 1, PsrTestHost.Author, Ct);
+        await host.Admin.PublishPipelineAsync("duas-versoes", second.Version, second.RowVersion, PsrTestHost.Author, Ct);
+        await host.PublishPipelineAsync("arquivada", EchoPipeline());
+        await host.Admin.ArchivePipelineVersionAsync("arquivada", 1, PsrTestHost.Author, Ct);
+        var draft = await host.Admin.CreatePipelineAsync(new NewCatalogItem("so-rascunho", "Só rascunho"), PsrTestHost.Author, Ct);
+        await host.Admin.SavePipelineDraftAsync("so-rascunho", draft.Version, EchoPipeline(), draft.RowVersion, PsrTestHost.Author, Ct);
+
+        var page = await host.Admin.ListStagesAsync(new CatalogQuery(), Ct);
+
+        page.Items.Select(s => (s.Key, s.UsedByPipelines)).ShouldBe([("eco", 2), ("solta", 0)]);
+    }
+
     private static PipelineDraftData EchoPipeline() => new()
     {
         Inputs = [Text("texto")],
