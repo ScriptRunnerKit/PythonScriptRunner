@@ -38,7 +38,10 @@ public interface IRunManager
     /// </summary>
     /// <param name="runId">Run identifier.</param>
     /// <param name="actor">Who reprocesses.</param>
-    /// <param name="mode"><see cref="ExecutionMode.Sync"/> runs it now in this process; <see cref="ExecutionMode.Async"/> needs a run queue.</param>
+    /// <param name="mode">
+    /// <see cref="ExecutionMode.Sync"/> runs it now in this process; <see cref="ExecutionMode.Async"/> queues the failed step for the
+    /// workers (requires the RabbitMQ package).
+    /// </param>
     /// <param name="cancellationToken">Cancellation token (cancels a synchronous reprocess).</param>
     /// <returns>The run after reprocessing (sync) or after it was queued (async).</returns>
     Task<RunSnapshot> ReprocessAsync(RunId runId, Actor actor, ExecutionMode mode = ExecutionMode.Async, CancellationToken cancellationToken = default);
@@ -140,6 +143,15 @@ public sealed record RunSnapshot
 
     /// <summary>Idempotency key given by the caller.</summary>
     public string? IdempotencyKey { get; init; }
+
+    /// <summary>Correlation given by the caller (returned in the events).</summary>
+    public string? CorrelationId { get; init; }
+
+    /// <summary>Schedule that fired the run.</summary>
+    public ScheduleId? ScheduleId { get; init; }
+
+    /// <summary>Details of the trigger, e.g. <c>{"scheduledFor": "...", "missedOccurrences": 10}</c> for a schedule recovery.</summary>
+    public JsonObject? TriggerDetails { get; init; }
 
     /// <summary>Creation time.</summary>
     public required DateTimeOffset CreatedAt { get; init; }

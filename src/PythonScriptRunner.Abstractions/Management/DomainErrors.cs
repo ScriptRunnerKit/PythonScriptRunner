@@ -56,6 +56,18 @@ public static class PsrErrorCodes
 
     /// <summary>The imported archive is not a valid catalog folder.</summary>
     public const string ImportInvalid = "IMPORT_INVALID";
+
+    /// <summary>The schedule does not exist.</summary>
+    public const string ScheduleNotFound = "SCHEDULE_NOT_FOUND";
+
+    /// <summary>The schedule has an invalid cron expression, time zone or version.</summary>
+    public const string ScheduleInvalid = "SCHEDULE_INVALID";
+
+    /// <summary>Pipelines with file inputs cannot be scheduled nor started by the public queue command (D-89).</summary>
+    public const string ScheduleFileInput = "SCHEDULE_FILE_INPUT";
+
+    /// <summary>The pipeline has file inputs, which the public queue command cannot send (D-89).</summary>
+    public const string FileInputNotAllowed = "FILE_INPUT_NOT_ALLOWED";
 }
 
 /// <summary>A business rule rejected the operation; <see cref="Code"/> is stable (see <see cref="PsrErrorCodes"/>).</summary>

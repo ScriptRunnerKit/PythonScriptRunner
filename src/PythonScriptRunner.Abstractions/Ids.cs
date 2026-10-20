@@ -1,7 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace PythonScriptRunner;
 
 /// <summary>Identifier of a run (time-ordered UUID v7). Its timestamp is the creation time of the run.</summary>
 /// <param name="Value">The underlying GUID.</param>
+[JsonConverter(typeof(RunIdJsonConverter))]
 public readonly record struct RunId(Guid Value)
 {
     /// <summary>Creates a new time-ordered identifier.</summary>
@@ -35,6 +38,7 @@ public readonly record struct AttemptId(Guid Value)
 
 /// <summary>Identifier of a step within a run (time-ordered UUID v7).</summary>
 /// <param name="Value">The underlying GUID.</param>
+[JsonConverter(typeof(StepRunIdJsonConverter))]
 public readonly record struct StepRunId(Guid Value)
 {
     /// <summary>Creates a new time-ordered identifier.</summary>

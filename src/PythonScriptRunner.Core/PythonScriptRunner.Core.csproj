@@ -18,6 +18,8 @@
     <InternalsVisibleTo Include="PythonScriptRunner.Core.Tests" />
     <!-- The persistence tests reuse the Python fixture of the Core tests (uv lookup). -->
     <InternalsVisibleTo Include="PythonScriptRunner.EntityFrameworkCore.Tests" />
+    <InternalsVisibleTo Include="PythonScriptRunner.RabbitMQ.Tests" />
+    <InternalsVisibleTo Include="PythonScriptRunner.Worker.Tests" />
   </ItemGroup>
 
   <ItemGroup>
