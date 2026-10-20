@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
@@ -46,7 +47,8 @@ public sealed class SchemaTests(PostgresFixture postgres, PythonFixture python)
 
         await ExecuteAsync(scripted.ConnectionString, script);
         (await scripted.ScalarAsync<string>(Signature)).ShouldBe(signature);
-        (await scripted.ScalarAsync<long>("SELECT count(*) FROM psr.__ef_migrations_history")).ShouldBe(1);
+        await using var db = await migrated.DbAsync();
+        (await scripted.ScalarAsync<long>("SELECT count(*) FROM psr.__ef_migrations_history")).ShouldBe(db.Database.GetMigrations().Count());
     }
 
     [Fact]

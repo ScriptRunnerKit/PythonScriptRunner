@@ -1,0 +1,75 @@
+{
+  "$schema": "../../../../schemas/pipeline.v1.json",
+  "key": "html-para-email",
+  "version": 1,
+  "name": "HTML para PDF por e-mail",
+  "inputs": [
+    {
+      "name": "html",
+      "type": "file",
+      "contentTypes": [
+        "text/html"
+      ]
+    },
+    {
+      "name": "destinatarios",
+      "type": "list",
+      "itemType": "string"
+    },
+    {
+      "name": "assunto",
+      "type": "string"
+    },
+    {
+      "name": "corpo",
+      "type": "string",
+      "required": false,
+      "default": "Segue o documento em anexo."
+    }
+  ],
+  "steps": [
+    {
+      "key": "gerar-pdf",
+      "stage": "html-para-pdf@1",
+      "bindings": {
+        "html": "$pipeline.html",
+        "nome_arquivo": {
+          "const": "relatorio.pdf"
+        }
+      }
+    },
+    {
+      "key": "enviar",
+      "stage": "enviar-email@1",
+      "bindings": {
+        "smtp_host": {
+          "const": "smtp.exemplo.com"
+        },
+        "smtp_porta": {
+          "const": 465
+        },
+        "remetente": {
+          "const": "no-reply@exemplo.com"
+        },
+        "destinatarios": "$pipeline.destinatarios",
+        "assunto": "$pipeline.assunto",
+        "corpo": "$pipeline.corpo",
+        "anexo": "$steps.gerar-pdf.pdf"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "pdf",
+      "source": "$steps.gerar-pdf.pdf"
+    },
+    {
+      "name": "paginas",
+      "source": "$steps.gerar-pdf.paginas"
+    },
+    {
+      "name": "message_id",
+      "source": "$steps.enviar.message_id"
+    }
+  ]
+}

@@ -84,6 +84,10 @@ internal sealed class StepWorker(
             }
 
             command = JsonSerializer.Deserialize<ExecuteStepCommand>(delivery.Body.Span, PsrMessageJson.Options) ?? throw new JsonException("The body is null.");
+            if (command.RunId.Value == Guid.Empty || command.StepRunId.Value == Guid.Empty || command.Attempt < 1)
+            {
+                throw new JsonException("runId, stepRunId and attempt (>= 1) are required.");
+            }
         }
         catch (JsonException ex)
         {

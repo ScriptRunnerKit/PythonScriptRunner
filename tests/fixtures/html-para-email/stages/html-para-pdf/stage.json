@@ -1,0 +1,37 @@
+{
+  "$schema": "../../../../../schemas/stage.v1.json",
+  "key": "html-para-pdf",
+  "version": 1,
+  "name": "HTML para PDF",
+  "description": "Converte um HTML em PDF com o weasyprint.",
+  "requirements": "requirements.txt",
+  "idempotent": true,
+  "inputs": [
+    {
+      "name": "html",
+      "type": "file",
+      "contentTypes": [
+        "text/html"
+      ]
+    },
+    {
+      "name": "nome_arquivo",
+      "type": "string",
+      "required": false,
+      "default": "documento.pdf"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "pdf",
+      "type": "file",
+      "contentTypes": [
+        "application/pdf"
+      ]
+    },
+    {
+      "name": "paginas",
+      "type": "integer"
+    }
+  ]
+}
