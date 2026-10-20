@@ -35,6 +35,13 @@ jobs:
       # The integration tests build the psrunner wheel and create real Python environments with uv.
       - uses: astral-sh/setup-uv@v10.3.0
 
+      # The Release build embeds the Vue panel (npm ci + npm run build in panel/; D-155).
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: panel/.nvmrc
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+
       - name: Restore
         run: dotnet restore
 
@@ -46,11 +53,24 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b fonts-dejavu-core
 
-      # The persistence, queue and worker tests start PostgreSQL 16, RabbitMQ 3.13 and Mailpit with Testcontainers
-      # (Docker); GitHub's Windows runners cannot run Linux containers, so Windows runs the Core tests only.
+      # The panel E2E tests drive Chromium with Playwright (spec 008; D-149, D-156).
+      - name: Install Chromium
+        if: runner.os == 'Linux'
+        run: pwsh tests/PythonScriptRunner.Panel.E2E.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      # The persistence, queue, worker, dashboard and panel tests start PostgreSQL 16, RabbitMQ 3.13 and Mailpit with
+      # Testcontainers (Docker); GitHub's Windows runners cannot run Linux containers, so Windows runs the Core tests only.
       - name: Test
         if: runner.os == 'Linux'
         run: dotnet test --no-build --configuration Release
+
+      - name: Upload Playwright traces
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: tests/PythonScriptRunner.Panel.E2E.Tests/bin/Release/net10.0/TestResults/traces/
+          if-no-files-found: ignore
 
       - name: Test (Core)
         if: runner.os == 'Windows'
@@ -68,6 +88,41 @@ jobs:
 
       - name: Verify formatting
         run: dotnet format --verify-no-changes
+
+  panel:
+    name: Panel (Vue)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: panel
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: panel/.nvmrc
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      # The TypeScript types are generated from the versioned OpenAPI snapshot of the Dashboard tests (D-137).
+      - name: API types up to date
+        run: npm run api:check
+
+      - name: Test
+        run: npm test
+
+      # vue-tsc + vite build + the initial bundle budget (≤ 500 KB gzip; spec 008).
+      - name: Build
+        run: npm run build
 
   python-sdk:
     name: psrunner (${{ matrix.os }}, Python ${{ matrix.python }})
