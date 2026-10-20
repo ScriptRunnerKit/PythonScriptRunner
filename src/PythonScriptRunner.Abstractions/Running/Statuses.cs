@@ -1,6 +1,9 @@
+using System.Text.Json.Serialization;
+
 namespace PythonScriptRunner;
 
 /// <summary>What a run executes.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<RunKind>))]
 public enum RunKind
 {
     /// <summary>A published pipeline version.</summary>
@@ -14,6 +17,7 @@ public enum RunKind
 }
 
 /// <summary>Status of a run.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<RunStatus>))]
 public enum RunStatus
 {
     /// <summary>Waiting for a concurrency slot of the pipeline.</summary>
@@ -33,6 +37,7 @@ public enum RunStatus
 }
 
 /// <summary>Status of a step within a run.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<StepStatus>))]
 public enum StepStatus
 {
     /// <summary>Not started yet.</summary>
@@ -54,6 +59,7 @@ public enum StepStatus
 }
 
 /// <summary>Final status of one attempt.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<AttemptStatus>))]
 public enum AttemptStatus
 {
     /// <summary>Executing.</summary>
@@ -71,6 +77,7 @@ public enum AttemptStatus
 }
 
 /// <summary>Why an attempt was started.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<AttemptCause>))]
 public enum AttemptCause
 {
     /// <summary>First attempt of the step.</summary>
@@ -84,6 +91,7 @@ public enum AttemptCause
 }
 
 /// <summary>Who or what started a run.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<RunTrigger>))]
 public enum RunTrigger
 {
     /// <summary>Code calling the library.</summary>
@@ -97,6 +105,7 @@ public enum RunTrigger
 }
 
 /// <summary>How a run is executed.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ExecutionMode>))]
 public enum ExecutionMode
 {
     /// <summary>In the calling process, waiting for the result.</summary>
@@ -106,6 +115,7 @@ public enum ExecutionMode
 }
 
 /// <summary>Life cycle of a stage or pipeline version.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<VersionStatus>))]
 public enum VersionStatus
 {
     /// <summary>Editable; can be tested but not used by published pipelines.</summary>
@@ -117,6 +127,7 @@ public enum VersionStatus
 }
 
 /// <summary>Whether a stored file was given to a run or produced by it.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ArtifactDirection>))]
 public enum ArtifactDirection
 {
     /// <summary>Input of the run.</summary>
@@ -126,6 +137,7 @@ public enum ArtifactDirection
 }
 
 /// <summary>Output stream of a Python process.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<LogStream>))]
 public enum LogStream
 {
     /// <summary>Standard output.</summary>
@@ -135,6 +147,7 @@ public enum LogStream
 }
 
 /// <summary>Classification of a failure.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ErrorKind>))]
 public enum ErrorKind
 {
     /// <summary>Inputs do not match the contract.</summary>

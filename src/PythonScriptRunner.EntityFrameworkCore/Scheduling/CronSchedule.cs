@@ -21,7 +21,7 @@ internal sealed class CronSchedule
     {
         if (string.IsNullOrWhiteSpace(cron) || cron.Length > 100)
         {
-            throw Invalid("The cron expression is required (up to 100 chars).");
+            throw new PsrDomainException(PsrErrorCodes.InvalidCron, "The cron expression is required (up to 100 chars).");
         }
 
         var fields = cron.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
@@ -32,7 +32,7 @@ internal sealed class CronSchedule
         }
         catch (CronFormatException ex)
         {
-            throw Invalid($"Invalid cron expression '{cron}': {ex.Message}");
+            throw new PsrDomainException(PsrErrorCodes.InvalidCron, $"Invalid cron expression '{cron}': {ex.Message}", ex);
         }
 
         try
@@ -41,7 +41,7 @@ internal sealed class CronSchedule
         }
         catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
         {
-            throw Invalid($"Unknown IANA time zone '{timeZone}'.");
+            throw new PsrDomainException(PsrErrorCodes.InvalidTimeZone, $"Unknown IANA time zone '{timeZone}'.", ex);
         }
     }
 
@@ -50,6 +50,25 @@ internal sealed class CronSchedule
     public DateTimeOffset? Next(DateTimeOffset after) =>
         _expression.GetNextOccurrence(after.ToUniversalTime(), _zone) is { } next ? next.ToUniversalTime() : null;
 
+    /// <summary>The next <paramref name="count"/> occurrences after <paramref name="after"/> (UTC).</summary>
+    /// <param name="after">Reference instant.</param>
+    /// <param name="count">How many.</param>
+    public IReadOnlyList<DateTimeOffset> Next(DateTimeOffset after, int count)
+    {
+        var occurrences = new List<DateTimeOffset>(count);
+        var from = after;
+        while (occurrences.Count < count && Next(from) is { } next)
+        {
+            occurrences.Add(next);
+            from = next;
+        }
+
+        return occurrences;
+    }
+
+    /// <summary>The time zone of the expression.</summary>
+    public TimeZoneInfo Zone => _zone;
+
     /// <summary>How many occurrences fall in <c>[from, to]</c>, counting up to <paramref name="max"/>.</summary>
     /// <param name="from">First instant (inclusive).</param>
     /// <param name="to">Last instant (inclusive).</param>
@@ -57,5 +76,4 @@ internal sealed class CronSchedule
     public int CountOccurrences(DateTimeOffset from, DateTimeOffset to, int max = 100_000) =>
         to < from ? 0 : _expression.GetOccurrences(from.ToUniversalTime(), to.ToUniversalTime(), _zone, fromInclusive: true, toInclusive: true).Take(max).Count();
 
-    private static PsrDomainException Invalid(string message) => new(PsrErrorCodes.ScheduleInvalid, message);
 }

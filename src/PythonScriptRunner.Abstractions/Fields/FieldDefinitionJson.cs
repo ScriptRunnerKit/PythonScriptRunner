@@ -1,12 +1,15 @@
 using System.Text.Json.Nodes;
 
-namespace PythonScriptRunner.Core.Catalog;
+namespace PythonScriptRunner;
 
-/// <summary>Maps <see cref="FieldDefinition"/> to and from the manifest/protocol JSON (camelCase).</summary>
-internal static class FieldDefinitionJson
+/// <summary>Maps <see cref="FieldDefinition"/> to and from the manifest/protocol JSON (camelCase; data mapping §2.1).</summary>
+public static class FieldDefinitionJson
 {
+    /// <summary>Writes a field declaration.</summary>
+    /// <param name="field">The field.</param>
     public static JsonObject ToJson(FieldDefinition field)
     {
+        ArgumentNullException.ThrowIfNull(field);
         var type = field.Type;
         var json = new JsonObject
         {
@@ -47,11 +50,16 @@ internal static class FieldDefinitionJson
         return json;
     }
 
+    /// <summary>Writes field declarations.</summary>
+    /// <param name="fields">The fields.</param>
     public static JsonArray ToJson(IEnumerable<FieldDefinition> fields) => new([.. fields.Select(f => (JsonNode)ToJson(f))]);
 
+    /// <summary>Reads a field declaration.</summary>
+    /// <param name="json">The JSON object.</param>
     /// <exception cref="ArgumentException">The JSON is not a valid field declaration.</exception>
     public static FieldDefinition FromJson(JsonObject json)
     {
+        ArgumentNullException.ThrowIfNull(json);
         var name = json["name"]?.GetValue<string>() ?? throw new ArgumentException("Field without 'name'.");
         var type = FieldType.Parse(
             json["type"]?.GetValue<string>() ?? throw new ArgumentException($"Field '{name}' without 'type'."),

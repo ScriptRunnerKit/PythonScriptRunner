@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using PythonScriptRunner.Core.Catalog;
 
 namespace PythonScriptRunner.Core.Pipelines;
 

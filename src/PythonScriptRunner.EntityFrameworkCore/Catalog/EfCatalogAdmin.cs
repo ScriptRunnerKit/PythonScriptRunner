@@ -16,6 +16,7 @@ internal sealed partial class EfCatalogAdmin(
     IPipelineValidator pipelineValidator,
     IEnvironmentManager environments,
     IRunEngine engine,
+    AsyncRunLifecycle lifecycle,
     IOptions<PythonScriptRunnerOptions> runnerOptions,
     PsrEntityFrameworkOptions options,
     TimeProvider time) : ICatalogAdmin
@@ -45,6 +46,11 @@ internal sealed partial class EfCatalogAdmin(
             {
                 var pattern = $"%{query.Search.Trim()}%";
                 stages = stages.Where(s => EF.Functions.ILike(s.Key, pattern) || EF.Functions.ILike(s.Name, pattern));
+            }
+
+            if (query.Status is { } status)
+            {
+                stages = stages.Where(s => s.Versions.Any(v => v.Status == status));
             }
 
             var total = await stages.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -408,6 +414,32 @@ internal sealed partial class EfCatalogAdmin(
             .ConfigureAwait(false);
         return await engine.RunStageAsync(stage, RunKind.StageTest, inputs, RunOptionsFor(actor), cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<RunHandle> EnqueueStageDraftTestAsync(string key, object? inputs, Actor actor, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        var (stage, versionId) = await LoadStageDraftDefinitionAsync(key, cancellationToken).ConfigureAwait(false);
+        var report = stageValidator.Validate(stage);
+        if (!report.IsValid)
+        {
+            throw new DefinitionInvalidException(PsrErrorCodes.StageInvalid, report);
+        }
+
+        var bound = engine.BindInputs(stage.Inputs, inputs);
+        await WriteAuditAsync(new AuditEntry(actor, AuditActions.StageTested, "StageVersion", versionId, $"{key}@{stage.Version}"), cancellationToken)
+            .ConfigureAwait(false);
+        return await lifecycle.CreateAsync(QueuedTest(RunKind.StageTest, actor, bound) with { Stage = stage }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A draft test queued for the workers (D-114).</summary>
+    private static NewAsyncRun QueuedTest(RunKind kind, Actor actor, BoundRunInputs inputs) => new()
+    {
+        Kind = kind,
+        Inputs = inputs,
+        Trigger = actor.IsHuman ? RunTrigger.Dashboard : RunTrigger.Library,
+        TriggeredBy = actor.Subject,
+        TraceParent = System.Diagnostics.Activity.Current?.Id,
+    };
 
     private async Task<(StageDefinition Stage, Guid VersionId)> LoadStageDraftDefinitionAsync(string key, CancellationToken cancellationToken)
     {

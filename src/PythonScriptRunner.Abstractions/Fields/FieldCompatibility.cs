@@ -1,10 +1,17 @@
-namespace PythonScriptRunner.Core.Pipelines;
+namespace PythonScriptRunner;
 
 /// <summary>Which source types can feed which target types in a binding (spec 003, safe widenings only).</summary>
-internal static class TypeCompatibility
+public static class FieldCompatibility
 {
-    public static bool IsAssignable(FieldDefinition source, FieldDefinition target) =>
-        IsAssignable(source.Type, target.Type, source, target);
+    /// <summary>Whether a value of <paramref name="source"/> can be bound to <paramref name="target"/>.</summary>
+    /// <param name="source">Field that produces the value.</param>
+    /// <param name="target">Field that receives it.</param>
+    public static bool IsAssignable(FieldDefinition source, FieldDefinition target)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(target);
+        return IsAssignable(source.Type, target.Type, source, target);
+    }
 
     private static bool IsAssignable(FieldType source, FieldType target, FieldDefinition sourceField, FieldDefinition targetField)
     {

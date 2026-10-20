@@ -20,6 +20,11 @@ internal sealed partial class EfCatalogAdmin
                 pipelines = pipelines.Where(p => EF.Functions.ILike(p.Key, pattern) || EF.Functions.ILike(p.Name, pattern));
             }
 
+            if (query.Status is { } status)
+            {
+                pipelines = pipelines.Where(p => p.Versions.Any(v => v.Status == status));
+            }
+
             var total = await pipelines.CountAsync(cancellationToken).ConfigureAwait(false);
             var items = await pipelines.OrderBy(p => p.Key)
                 .Skip((pageNumber - 1) * pageSize).Take(pageSize)
@@ -370,6 +375,33 @@ internal sealed partial class EfCatalogAdmin
     public async Task<RunResult> TestPipelineDraftAsync(string key, object? inputs, Actor actor, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(actor);
+        var pipeline = await PreparePipelineTestAsync(key, actor, cancellationToken).ConfigureAwait(false);
+        return await engine.RunPipelineAsync(pipeline, RunKind.PipelineTest, inputs, RunOptionsFor(actor), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RunHandle> EnqueuePipelineDraftTestAsync(string key, object? inputs, Actor actor, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        var pipeline = await LoadValidPipelineDraftAsync(key, cancellationToken).ConfigureAwait(false);
+        var bound = engine.BindInputs(pipeline.Definition.Inputs, inputs);
+        await WriteAuditAsync(new AuditEntry(actor, AuditActions.PipelineTested, "PipelineVersion", pipeline.VersionId, $"{key}@{pipeline.Definition.Version}"),
+            cancellationToken).ConfigureAwait(false);
+        return await lifecycle.CreateAsync(QueuedTest(RunKind.PipelineTest, actor, bound) with { Pipeline = pipeline.Definition }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Loads and validates the draft, then audits the test.</summary>
+    private async Task<PipelineDefinition> PreparePipelineTestAsync(string key, Actor actor, CancellationToken cancellationToken)
+    {
+        var pipeline = await LoadValidPipelineDraftAsync(key, cancellationToken).ConfigureAwait(false);
+        await WriteAuditAsync(new AuditEntry(actor, AuditActions.PipelineTested, "PipelineVersion", pipeline.VersionId, $"{key}@{pipeline.Definition.Version}"),
+            cancellationToken).ConfigureAwait(false);
+        return pipeline.Definition;
+    }
+
+    /// <summary>The current draft of a pipeline; <c>PIPELINE_INVALID</c> when it does not validate.</summary>
+    private async Task<(PipelineDefinition Definition, Guid VersionId)> LoadValidPipelineDraftAsync(string key, CancellationToken cancellationToken)
+    {
         PipelineDefinition pipeline;
         Guid versionId;
         var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
@@ -390,9 +422,7 @@ internal sealed partial class EfCatalogAdmin
             throw new DefinitionInvalidException(PsrErrorCodes.PipelineInvalid, report);
         }
 
-        await WriteAuditAsync(new AuditEntry(actor, AuditActions.PipelineTested, "PipelineVersion", versionId, $"{key}@{pipeline.Version}"), cancellationToken)
-            .ConfigureAwait(false);
-        return await engine.RunPipelineAsync(pipeline, RunKind.PipelineTest, inputs, RunOptionsFor(actor), cancellationToken).ConfigureAwait(false);
+        return (pipeline, versionId);
     }
 
     private async Task<PipelineDetail> ChangePipelineAsync(

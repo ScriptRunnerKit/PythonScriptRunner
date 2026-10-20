@@ -49,6 +49,8 @@ public sealed class PsrDbContext(DbContextOptions<PsrDbContext> options) : DbCon
     public DbSet<IdempotencyKeyEntity> IdempotencyKeys => Set<IdempotencyKeyEntity>();
 
     public DbSet<AuditEventEntity> AuditEvents => Set<AuditEventEntity>();
+
+    public DbSet<DashboardKeyEntity> DashboardKeys => Set<DashboardKeyEntity>();
 #pragma warning restore CS1591
 
     /// <inheritdoc />
@@ -272,6 +274,13 @@ public sealed class PsrDbContext(DbContextOptions<PsrDbContext> options) : DbCon
             e.Property(x => x.Scope).HasMaxLength(80);
             e.Property(x => x.Key).HasMaxLength(200);
             e.HasIndex(x => x.ExpiresAt);
+        });
+
+        model.Entity<DashboardKeyEntity>(e =>
+        {
+            e.ToTable("dashboard_keys");
+            e.Property(x => x.Id).UseIdentityAlwaysColumn();
+            e.Property(x => x.FriendlyName).HasMaxLength(200);
         });
 
         model.Entity<AuditEventEntity>(e =>

@@ -239,7 +239,7 @@ internal static class PipelineRules
 
     private static ValidationIssue? CheckTypes(FieldDefinition source, FieldDefinition target, string description, bool sourceMayBeAbsent)
     {
-        if (!TypeCompatibility.IsAssignable(source, target))
+        if (!FieldCompatibility.IsAssignable(source, target))
         {
             return new("PIPE_TYPE_MISMATCH", $"{description} is {source.Type} and cannot feed {target.Type}");
         }

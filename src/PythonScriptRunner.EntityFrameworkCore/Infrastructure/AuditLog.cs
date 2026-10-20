@@ -73,6 +73,16 @@ internal sealed class AuditReader(IDbContextFactory<PsrDbContext> factory, TimeP
                 events = events.Where(e => e.EntityType == entityType);
             }
 
+            if (query.Action is { } action)
+            {
+                events = events.Where(e => e.Action == action);
+            }
+
+            if (query.EntityKey is { } entityKey)
+            {
+                events = events.Where(e => e.EntityKey == entityKey);
+            }
+
             if (KeysetCursor.Decode(query.Cursor) is { } cursor)
             {
                 events = events.Where(e => e.OccurredAt < cursor.At || (e.OccurredAt == cursor.At && e.Id < cursor.Id));

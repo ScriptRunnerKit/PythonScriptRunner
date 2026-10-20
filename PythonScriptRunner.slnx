@@ -1,17 +1,21 @@
 <Solution>
   <Folder Name="/hosts/">
+    <Project Path="hosts/PythonScriptRunner.DashboardHost/PythonScriptRunner.DashboardHost.csproj" />
     <Project Path="hosts/PythonScriptRunner.ServiceDefaults/PythonScriptRunner.ServiceDefaults.csproj" />
     <Project Path="hosts/PythonScriptRunner.WorkerHost/PythonScriptRunner.WorkerHost.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/PythonScriptRunner.Abstractions/PythonScriptRunner.Abstractions.csproj" />
     <Project Path="src/PythonScriptRunner.Core/PythonScriptRunner.Core.csproj" />
+    <Project Path="src/PythonScriptRunner.Dashboard/PythonScriptRunner.Dashboard.csproj" />
     <Project Path="src/PythonScriptRunner.EntityFrameworkCore/PythonScriptRunner.EntityFrameworkCore.csproj" />
     <Project Path="src/PythonScriptRunner.RabbitMQ/PythonScriptRunner.RabbitMQ.csproj" />
+    <Project Path="src/PythonScriptRunner.Tool/PythonScriptRunner.Tool.csproj" />
     <Project Path="src/PythonScriptRunner.Worker/PythonScriptRunner.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PythonScriptRunner.Core.Tests/PythonScriptRunner.Core.Tests.csproj" />
+    <Project Path="tests/PythonScriptRunner.Dashboard.Tests/PythonScriptRunner.Dashboard.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.EntityFrameworkCore.Tests/PythonScriptRunner.EntityFrameworkCore.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.RabbitMQ.Tests/PythonScriptRunner.RabbitMQ.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Worker.Tests/PythonScriptRunner.Worker.Tests.csproj" />

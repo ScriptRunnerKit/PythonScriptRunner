@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PythonScriptRunner.Dashboard\PythonScriptRunner.Dashboard.csproj" />
+    <ProjectReference Include="..\..\src\PythonScriptRunner.Tool\PythonScriptRunner.Tool.csproj" />
+    <ProjectReference Include="..\..\src\PythonScriptRunner.Worker\PythonScriptRunner.Worker.csproj" />
+    <ProjectReference Include="..\..\hosts\PythonScriptRunner.DashboardHost\PythonScriptRunner.DashboardHost.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Same deployments as the worker tests: Python (uv + psrunner wheel), PostgreSQL and RabbitMQ containers, test hosts. -->
+    <Compile Include="..\PythonScriptRunner.Core.Tests\Infrastructure\PythonFixture.cs" Link="Infrastructure\PythonFixture.cs" />
+    <Compile Include="..\PythonScriptRunner.Core.Tests\Infrastructure\RunnerHost.cs" Link="Infrastructure\RunnerHost.cs" />
+    <Compile Include="..\PythonScriptRunner.EntityFrameworkCore.Tests\Infrastructure\PostgresFixture.cs" Link="Infrastructure\PostgresFixture.cs" />
+    <Compile Include="..\PythonScriptRunner.Worker.Tests\Infrastructure\BrokerFixture.cs" Link="Infrastructure\BrokerFixture.cs" />
+    <Compile Include="..\PythonScriptRunner.Worker.Tests\Infrastructure\PsrEnvironment.cs" Link="Infrastructure\PsrEnvironment.cs" />
+    <Compile Include="..\PythonScriptRunner.Worker.Tests\Infrastructure\TestSupport.cs" Link="Infrastructure\TestSupport.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="PythonScriptRunner.Core.Tests.Infrastructure" />
+    <Using Include="PythonScriptRunner.EntityFrameworkCore.Tests.Infrastructure" />
+    <Using Include="PythonScriptRunner.Testing" />
+    <Using Include="Shouldly" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>

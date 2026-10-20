@@ -65,3 +65,16 @@ public sealed class AuditEventEntity
 
     public string? TraceId { get; set; }
 }
+
+/// <summary>Row of <c>psr.dashboard_keys</c>: Data Protection keys of the dashboard session cookie (D-132).</summary>
+public sealed class DashboardKeyEntity
+{
+    public int Id { get; set; }
+
+    public string? FriendlyName { get; set; }
+
+    /// <summary>Key element as XML.</summary>
+    public required string Xml { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}

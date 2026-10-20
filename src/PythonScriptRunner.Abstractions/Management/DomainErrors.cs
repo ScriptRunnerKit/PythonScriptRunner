@@ -60,8 +60,14 @@ public static class PsrErrorCodes
     /// <summary>The schedule does not exist.</summary>
     public const string ScheduleNotFound = "SCHEDULE_NOT_FOUND";
 
-    /// <summary>The schedule has an invalid cron expression, time zone or version.</summary>
+    /// <summary>The schedule targets a version that cannot run (missing, draft or archived).</summary>
     public const string ScheduleInvalid = "SCHEDULE_INVALID";
+
+    /// <summary>The cron expression is invalid.</summary>
+    public const string InvalidCron = "INVALID_CRON";
+
+    /// <summary>The IANA time zone is unknown.</summary>
+    public const string InvalidTimeZone = "INVALID_TIME_ZONE";
 
     /// <summary>Pipelines with file inputs cannot be scheduled nor started by the public queue command (D-89).</summary>
     public const string ScheduleFileInput = "SCHEDULE_FILE_INPUT";

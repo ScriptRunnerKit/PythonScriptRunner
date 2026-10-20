@@ -216,6 +216,26 @@ public interface ICatalogAdmin
     Task<PipelineDetail> UpdatePipelineRetentionAsync(
         string key, PipelineRetention retention, uint expectedRowVersion, Actor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Validates the current draft of a stage and queues it as a test (<see cref="RunKind.StageTest"/>) for the workers (requires the
+    /// RabbitMQ package; D-114). <c>STAGE_INVALID</c> when invalid; <see cref="InputValidationException"/> for invalid inputs.
+    /// </summary>
+    /// <param name="key">Stage key.</param>
+    /// <param name="inputs">Stage inputs.</param>
+    /// <param name="actor">Author.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<RunHandle> EnqueueStageDraftTestAsync(string key, object? inputs, Actor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Validates the current draft of a pipeline and queues it as a test (<see cref="RunKind.PipelineTest"/>; D-97, D-114).
+    /// <c>PIPELINE_INVALID</c> when invalid; <see cref="InputValidationException"/> for invalid inputs.
+    /// </summary>
+    /// <param name="key">Pipeline key.</param>
+    /// <param name="inputs">Pipeline inputs.</param>
+    /// <param name="actor">Author.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<RunHandle> EnqueuePipelineDraftTestAsync(string key, object? inputs, Actor actor, CancellationToken cancellationToken = default);
+
     /// <summary>Validates and runs the current draft as a test (<see cref="RunKind.PipelineTest"/>); <c>PIPELINE_INVALID</c> when invalid.</summary>
     /// <param name="key">Pipeline key.</param>
     /// <param name="inputs">Pipeline inputs.</param>
@@ -290,7 +310,8 @@ public interface ICatalogAdmin
 /// <param name="Search">Text contained in the key or the name.</param>
 /// <param name="PageNumber">1-based page number.</param>
 /// <param name="PageSize">Items per page (1-100).</param>
-public sealed record CatalogQuery(string? Search = null, int PageNumber = 1, int PageSize = 25);
+/// <param name="Status">Only items that have a version with this status.</param>
+public sealed record CatalogQuery(string? Search = null, int PageNumber = 1, int PageSize = 25, VersionStatus? Status = null);
 
 /// <summary>A new stage or pipeline.</summary>
 /// <param name="Key">Slug (immutable).</param>

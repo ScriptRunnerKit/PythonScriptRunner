@@ -84,19 +84,3 @@ public static class PsrMessageJson
         return options;
     }
 }
-
-/// <summary>Writes <see cref="RunId"/> as its GUID text.</summary>
-internal sealed class RunIdJsonConverter : JsonConverter<RunId>
-{
-    public override RunId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetGuid());
-
-    public override void Write(Utf8JsonWriter writer, RunId value, JsonSerializerOptions options) => writer.WriteStringValue(value.Value);
-}
-
-/// <summary>Writes <see cref="StepRunId"/> as its GUID text.</summary>
-internal sealed class StepRunIdJsonConverter : JsonConverter<StepRunId>
-{
-    public override StepRunId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetGuid());
-
-    public override void Write(Utf8JsonWriter writer, StepRunId value, JsonSerializerOptions options) => writer.WriteStringValue(value.Value);
-}

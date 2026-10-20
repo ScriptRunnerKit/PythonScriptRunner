@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace PythonScriptRunner;
 
@@ -55,6 +56,7 @@ public sealed record PipelineOutputDefinition(string Name, StepOutputSource Sour
 }
 
 /// <summary>Origin of a bound value.</summary>
+[JsonConverter(typeof(BindingSourceJsonConverter))]
 public abstract record BindingSource
 {
     private protected BindingSource()
