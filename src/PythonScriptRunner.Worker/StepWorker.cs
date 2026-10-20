@@ -43,12 +43,14 @@ internal sealed class StepWorker(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _consumer = new QueueConsumer(broker, new QueueConsumerSettings
+        // The task captures the consumer: a stop right after the start may already have cleared the field.
+        var consumer = new QueueConsumer(broker, new QueueConsumerSettings
         {
             Queue = PsrTopology.ExecuteStepQueue,
             Prefetch = (ushort)options.MaxConcurrency,
         }, HandleAsync, logger);
-        _running = Task.Run(() => _consumer.RunAsync(_stopping.Token), CancellationToken.None);
+        _consumer = consumer;
+        _running = Task.Run(() => consumer.RunAsync(_stopping.Token), CancellationToken.None);
         Log.Started(logger, WorkerId, PsrTopology.ExecuteStepQueue, options.MaxConcurrency);
         return Task.CompletedTask;
     }

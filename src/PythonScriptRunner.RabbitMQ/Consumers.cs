@@ -25,8 +25,10 @@ internal abstract class ConsumerService(PsrBroker broker, ILogger logger) : IHos
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _consumer = new QueueConsumer(Broker, Settings(), HandleAsync, Logger);
-        _running = Task.Run(() => _consumer.RunAsync(_stopping.Token), CancellationToken.None);
+        // The task captures the consumer: a stop right after the start may already have cleared the field.
+        var consumer = new QueueConsumer(Broker, Settings(), HandleAsync, Logger);
+        _consumer = consumer;
+        _running = Task.Run(() => consumer.RunAsync(_stopping.Token), CancellationToken.None);
         return Task.CompletedTask;
     }
 
