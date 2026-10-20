@@ -423,7 +423,9 @@ public sealed record StageVersionDetail
 /// <param name="LatestPublishedVersion">Latest published version.</param>
 /// <param name="DraftVersion">Version of the current draft.</param>
 /// <param name="UpdatedAt">Last change.</param>
-public sealed record StageSummary(string Key, string Name, string? Description, int? LatestPublishedVersion, int? DraftVersion, DateTimeOffset UpdatedAt);
+/// <param name="UsedByPipelines">Distinct pipelines with a published version that uses any version of the stage.</param>
+public sealed record StageSummary(
+    string Key, string Name, string? Description, int? LatestPublishedVersion, int? DraftVersion, DateTimeOffset UpdatedAt, int UsedByPipelines);
 
 /// <summary>A pipeline step that uses a stage version.</summary>
 /// <param name="PipelineKey">Pipeline key.</param>

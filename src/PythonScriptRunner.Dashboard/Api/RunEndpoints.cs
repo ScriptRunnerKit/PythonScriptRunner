@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using PythonScriptRunner.EntityFrameworkCore;
@@ -93,9 +94,17 @@ internal static class RunEndpoints
     }
 }
 
-/// <summary>Filters of <c>GET /runs</c>.</summary>
+/// <summary>Filters of <c>GET /runs</c> (camelCase in the query, like the rest of the API).</summary>
 internal sealed record RunListQuery(
-    string? PipelineKey, string? StageKey, RunKind? Kind, RunStatus? Status, RunTrigger? Trigger, DateTimeOffset? From, DateTimeOffset? To, string? Cursor, int? Limit);
+    [FromQuery(Name = "pipelineKey")] string? PipelineKey,
+    [FromQuery(Name = "stageKey")] string? StageKey,
+    [FromQuery(Name = "kind")] RunKind? Kind,
+    [FromQuery(Name = "status")] RunStatus? Status,
+    [FromQuery(Name = "trigger")] RunTrigger? Trigger,
+    [FromQuery(Name = "from")] DateTimeOffset? From,
+    [FromQuery(Name = "to")] DateTimeOffset? To,
+    [FromQuery(Name = "cursor")] string? Cursor,
+    [FromQuery(Name = "limit")] int? Limit);
 
 /// <summary>Computes <c>GET /overview</c> (D-115).</summary>
 internal sealed class OverviewQuery(IDbContextFactory<PsrDbContext> factory, IRunManager runs, TimeProvider time)
