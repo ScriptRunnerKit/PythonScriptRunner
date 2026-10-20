@@ -177,6 +177,7 @@ public sealed class PsrDbContext(DbContextOptions<PsrDbContext> options) : DbCon
             Json(e.Property(x => x.Inputs));
             Json(e.Property(x => x.Outputs));
             Json(e.Property(x => x.Error));
+            Json(e.Property(x => x.TriggerDetails));
             e.Property(x => x.IdempotencyKey).HasMaxLength(200);
             e.Property(x => x.CorrelationId).HasMaxLength(200);
             e.Property(x => x.TraceParent).HasMaxLength(55);

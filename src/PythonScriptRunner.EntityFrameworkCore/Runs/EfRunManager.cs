@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using PythonScriptRunner.EntityFrameworkCore.Catalog;
-using PythonScriptRunner.EntityFrameworkCore.Entities;
 using PythonScriptRunner.EntityFrameworkCore.Infrastructure;
 
 namespace PythonScriptRunner.EntityFrameworkCore.Runs;
@@ -11,6 +10,9 @@ internal sealed class EfRunManager(
     IDbContextFactory<PsrDbContext> factory,
     RunLoader loader,
     IRunEngine engine,
+    AsyncRunLifecycle lifecycle,
+    IRunMessageOutbox messages,
+    PsrClock clock,
     TimeProvider time) : IRunManager
 {
     public async Task<RunSnapshot?> GetAsync(RunId runId, CancellationToken cancellationToken = default)
@@ -107,51 +109,28 @@ internal sealed class EfRunManager(
     public async Task CancelAsync(RunId runId, Actor actor, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(actor);
-        var createdAt = runId.CreatedAt;
+        RunStatus? status;
         var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
-            var runs = db.Runs.Where(r => r.Id == runId.Value && r.CreatedAt == createdAt);
-            var steps = db.StepRuns.Where(s => s.RunId == runId.Value && s.RunCreatedAt == createdAt);
-            var now = time.GetUtcNow();
-            var error = StoredJson.Error(new RunError(ErrorKind.Cancelled, $"Cancelled by {actor.Subject}."));
-
-            // Transitions are conditional on the current status, so a run that finishes meanwhile is never reopened.
-            var waiting = await runs.Where(r => r.Status == RunStatus.Pending || r.Status == RunStatus.Queued)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(r => r.Status, RunStatus.Cancelled)
-                    .SetProperty(r => r.FinishedAt, now)
-                    .SetProperty(r => r.Error, error)
-                    .SetProperty(r => r.CancelRequestedAt, now)
-                    .SetProperty(r => r.CancelRequestedBy, actor.Subject), cancellationToken).ConfigureAwait(false);
-            if (waiting > 0)
+            var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            await using (transaction.ConfigureAwait(false))
             {
-                await steps.Where(s => s.Status == StepStatus.Queued)
-                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, StepStatus.Cancelled), cancellationToken).ConfigureAwait(false);
-                await steps.Where(s => s.Status == StepStatus.Pending)
-                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, StepStatus.Skipped), cancellationToken).ConfigureAwait(false);
+                var now = await clock.GetUtcNowAsync(cancellationToken).ConfigureAwait(false);
+                status = await lifecycle.CancelAsync(db, runId, actor, now, cancellationToken).ConfigureAwait(false) ?? throw new RunNotFoundException(runId);
+                var createdAt = runId.CreatedAt;
+                var target = await db.Runs.Where(r => r.Id == runId.Value && r.CreatedAt == createdAt).Select(r => r.PipelineKey ?? r.StageKey)
+                    .SingleAsync(cancellationToken).ConfigureAwait(false);
+                AuditLog.Add(db, new AuditEntry(actor, AuditActions.RunCancelled, "Run", runId.Value, target), now);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             }
-            else
-            {
-                var running = await runs.Where(r => r.Status == RunStatus.Running || r.Status == RunStatus.Cancelling)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(r => r.Status, RunStatus.Cancelling)
-                        .SetProperty(r => r.CancelRequestedAt, r => r.CancelRequestedAt ?? now)
-                        .SetProperty(r => r.CancelRequestedBy, r => r.CancelRequestedBy ?? actor.Subject), cancellationToken).ConfigureAwait(false);
-                if (running == 0)
-                {
-                    var status = await runs.Select(r => (RunStatus?)r.Status).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false)
-                        ?? throw new RunNotFoundException(runId);
-                    throw new PsrDomainException(PsrErrorCodes.RunNotCancellable, $"Run {runId} already finished ({status}).");
-                }
+        }
 
-                // Runs executing in this process stop now; the queue package stops the others (control messages).
-                engine.RequestCancellation(runId);
-            }
-
-            var target = await runs.Select(r => r.PipelineKey ?? r.StageKey).SingleAsync(cancellationToken).ConfigureAwait(false);
-            AuditLog.Add(db, new AuditEntry(actor, AuditActions.RunCancelled, "Run", runId.Value, target), now);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (status == RunStatus.Cancelling)
+        {
+            // Runs executing in this process stop now; the queue stops the others (CancelRun to every instance).
+            engine.RequestCancellation(runId);
         }
     }
 
@@ -160,8 +139,7 @@ internal sealed class EfRunManager(
         ArgumentNullException.ThrowIfNull(actor);
         if (mode == ExecutionMode.Async)
         {
-            throw new PsrConfigurationException(
-                "Asynchronous reprocessing needs a run queue (PythonScriptRunner.RabbitMQ). Use ExecutionMode.Sync to reprocess in this process.");
+            return await QueueReprocessAsync(runId, actor, cancellationToken).ConfigureAwait(false);
         }
 
         var request = await PrepareResumeAsync(runId, actor, cancellationToken).ConfigureAwait(false);
@@ -191,6 +169,59 @@ internal sealed class EfRunManager(
         }
     }
 
+    /// <summary>Queues the failed step for the workers (the run keeps its id, version and inputs).</summary>
+    private async Task<RunSnapshot> QueueReprocessAsync(RunId runId, Actor actor, CancellationToken cancellationToken)
+    {
+        if (!messages.IsEnabled)
+        {
+            throw new PsrConfigurationException(
+                "Asynchronous reprocessing needs a run queue (PythonScriptRunner.RabbitMQ). Use ExecutionMode.Sync to reprocess in this process.");
+        }
+
+        var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (db.ConfigureAwait(false))
+        {
+            var loaded = await RunLoader.LoadAsync(db, runId, cancellationToken).ConfigureAwait(false) ?? throw new RunNotFoundException(runId);
+            var now = await clock.GetUtcNowAsync(cancellationToken).ConfigureAwait(false);
+            EnsureReprocessable(loaded, runId, now);
+            var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            await using (transaction.ConfigureAwait(false))
+            {
+                if (!await lifecycle.QueueReprocessAsync(db, runId, actor, now, cancellationToken).ConfigureAwait(false))
+                {
+                    throw new PsrDomainException(PsrErrorCodes.RunNotFailed, $"Run {runId} is already being reprocessed.");
+                }
+
+                AuditLog.Add(db, new AuditEntry(actor, AuditActions.RunReprocessed, "Run", runId.Value, RunLoader.TargetKey(loaded.Run),
+                    new JsonObject { ["mode"] = nameof(ExecutionMode.Async) }), now);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return await GetAsync(runId, CancellationToken.None).ConfigureAwait(false) ?? throw new RunNotFoundException(runId);
+    }
+
+    /// <summary>Only failed runs whose files are still retained can be reprocessed.</summary>
+    private static void EnsureReprocessable(LoadedRun loaded, RunId runId, DateTimeOffset now)
+    {
+        var run = loaded.Run;
+        if (run.Status != RunStatus.Failed)
+        {
+            throw new PsrDomainException(PsrErrorCodes.RunNotFailed, $"Only failed runs can be reprocessed; run {runId} is {run.Status}.");
+        }
+
+        var needed = ArtifactRefs.Referenced(StoredJson.Object(run.Inputs))
+            .Concat(run.Steps.Where(s => s.Status == StepStatus.Succeeded).SelectMany(s => ArtifactRefs.Referenced(StoredJson.Object(s.Outputs))))
+            .ToHashSet();
+        var expired = needed.Where(id => !loaded.Artifacts.TryGetValue(id, out var a) || a.ContentDeletedAt is not null || a.ContentExpiresAt <= now).ToList();
+        if (expired.Count > 0)
+        {
+            throw new PsrDomainException(PsrErrorCodes.ArtifactsExpired,
+                $"Run {runId} cannot be reprocessed: {expired.Count} file(s) it needs are beyond the retention.");
+        }
+    }
+
     /// <summary>Checks the run can be reprocessed, claims it (Failed → Running) and loads the state to resume.</summary>
     private async Task<ResumeRequest> PrepareResumeAsync(RunId runId, Actor actor, CancellationToken cancellationToken)
     {
@@ -200,23 +231,9 @@ internal sealed class EfRunManager(
         {
             var loaded = await RunLoader.LoadAsync(db, runId, cancellationToken).ConfigureAwait(false) ?? throw new RunNotFoundException(runId);
             var run = loaded.Run;
-            if (run.Status != RunStatus.Failed)
-            {
-                throw new PsrDomainException(PsrErrorCodes.RunNotFailed, $"Only failed runs can be reprocessed; run {runId} is {run.Status}.");
-            }
-
             var now = time.GetUtcNow();
-            var needed = ArtifactRefs.Referenced(StoredJson.Object(run.Inputs))
-                .Concat(run.Steps.Where(s => s.Status == StepStatus.Succeeded).SelectMany(s => ArtifactRefs.Referenced(StoredJson.Object(s.Outputs))))
-                .ToHashSet();
-            var expired = needed.Where(id => !loaded.Artifacts.TryGetValue(id, out var a) || a.ContentDeletedAt is not null || a.ContentExpiresAt <= now).ToList();
-            if (expired.Count > 0)
-            {
-                throw new PsrDomainException(PsrErrorCodes.ArtifactsExpired,
-                    $"Run {runId} cannot be reprocessed: {expired.Count} file(s) it needs are beyond the retention.");
-            }
-
-            var (stage, pipeline) = await LoadDefinitionAsync(db, run, cancellationToken).ConfigureAwait(false);
+            EnsureReprocessable(loaded, runId, now);
+            var (stage, pipeline) = await RunDefinitions.LoadAsync(db, run, cancellationToken).ConfigureAwait(false);
             var claimed = await db.Runs.Where(r => r.Id == run.Id && r.CreatedAt == createdAt && r.Status == RunStatus.Failed)
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RunStatus.Running), cancellationToken).ConfigureAwait(false);
             if (claimed == 0)
@@ -241,24 +258,5 @@ internal sealed class EfRunManager(
                 TriggeredBy = actor.Subject,
             };
         }
-    }
-
-    /// <summary>The exact version the run executed (any status: archived versions can still be reprocessed).</summary>
-    private static async Task<(StageDefinition? Stage, PipelineDefinition? Pipeline)> LoadDefinitionAsync(
-        PsrDbContext db, RunEntity run, CancellationToken cancellationToken)
-    {
-        if (run.Kind is RunKind.Pipeline or RunKind.PipelineTest)
-        {
-            var version = await db.PipelineVersions.AsNoTracking().Include(v => v.Pipeline)
-                .SingleOrDefaultAsync(v => v.Id == run.PipelineVersionId, cancellationToken).ConfigureAwait(false)
-                ?? throw new VersionNotFoundException(run.PipelineKey ?? string.Empty, run.PipelineVersion ?? 0);
-            var steps = await EfCatalog.LoadStepsAsync(db, version.Id, cancellationToken).ConfigureAwait(false);
-            return (null, CatalogMapping.ToPipeline(version.Pipeline, version, steps));
-        }
-
-        var stageVersion = await db.StageVersions.AsNoTracking().Include(v => v.Stage)
-            .SingleOrDefaultAsync(v => v.Id == run.StageVersionId, cancellationToken).ConfigureAwait(false)
-            ?? throw new VersionNotFoundException(run.StageKey ?? string.Empty, run.StageVersion ?? 0);
-        return (CatalogMapping.ToStage(stageVersion.Stage, stageVersion), null);
     }
 }

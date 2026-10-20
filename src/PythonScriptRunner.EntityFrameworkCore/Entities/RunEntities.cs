@@ -33,6 +33,9 @@ public sealed class RunEntity
 
     public Guid? ScheduleId { get; set; }
 
+    /// <summary>Details of the trigger as JSON (e.g. scheduled time and missed occurrences of a schedule recovery).</summary>
+    public string? TriggerDetails { get; set; }
+
     public RunStatus Status { get; set; }
 
     /// <summary>Validated inputs as JSON (files as <c>{"$artifact": id}</c>).</summary>

@@ -21,6 +21,12 @@ public sealed class PsrEntityFrameworkOptions
     /// <summary>How long "latest published version" lookups are cached in this process. Default: 30 seconds.</summary>
     public TimeSpan LatestVersionCacheDuration { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// Aligns the time used by queued runs (leases, retry delays, schedules, outbox) to the PostgreSQL clock, so hosts with
+    /// skewed clocks agree. Default: <c>true</c>. Tests that simulate time with a <see cref="TimeProvider"/> turn it off.
+    /// </summary>
+    public bool UseDatabaseClock { get; set; } = true;
+
     /// <summary>Connects to PostgreSQL (16 or newer).</summary>
     /// <param name="connectionString">Npgsql connection string.</param>
     /// <param name="configure">Extra settings of the data source (e.g. logging, password provider).</param>
