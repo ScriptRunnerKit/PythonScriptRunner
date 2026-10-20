@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PythonScriptRunner.Tool</RootNamespace>
+    <Description>Command line utilities of PythonScriptRunner (dotnet tool 'psr'): psr hash-password generates the password hash of a dashboard fixed login user.</Description>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>psr</ToolCommandName>
+    <StartupObject>PythonScriptRunner.Tool.PsrTool</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PythonScriptRunner.Dashboard.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+  </ItemGroup>
+
+</Project>
