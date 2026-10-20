@@ -57,6 +57,12 @@ public sealed record AuditQuery
     /// <summary>Only events of this entity type.</summary>
     public string? EntityType { get; init; }
 
+    /// <summary>Only events of this action (see <see cref="AuditActions"/>).</summary>
+    public string? Action { get; init; }
+
+    /// <summary>Only events of this entity key (e.g. <c>html-para-pdf@3</c>).</summary>
+    public string? EntityKey { get; init; }
+
     /// <summary>Cursor returned by the previous page.</summary>
     public string? Cursor { get; init; }
 
@@ -96,5 +102,8 @@ public static class AuditActions
     public const string RunCancelled = nameof(RunCancelled);
     public const string RunReprocessed = nameof(RunReprocessed);
     public const string CatalogImported = nameof(CatalogImported);
+    public const string LoginSucceeded = nameof(LoginSucceeded);
+    public const string LoggedOut = nameof(LoggedOut);
+    public const string UserLocked = nameof(UserLocked);
 #pragma warning restore CS1591
 }

@@ -113,10 +113,10 @@ public sealed class SchedulerTests(PostgresFixture postgres, BrokerFixture broke
         await PublishEchoPipelineAsync(app);
 
         (await Should.ThrowAsync<PsrDomainException>(() => app.Admin.CreateScheduleAsync("eco-agendado", EchoSchedule("61 * * * *"), PsrEnvironment.Author, Ct)))
-            .Code.ShouldBe(PsrErrorCodes.ScheduleInvalid);
+            .Code.ShouldBe(PsrErrorCodes.InvalidCron);
         (await Should.ThrowAsync<PsrDomainException>(() =>
                 app.Admin.CreateScheduleAsync("eco-agendado", EchoSchedule("* * * * *") with { TimeZone = "Marte/Olimpo" }, PsrEnvironment.Author, Ct)))
-            .Code.ShouldBe(PsrErrorCodes.ScheduleInvalid);
+            .Code.ShouldBe(PsrErrorCodes.InvalidTimeZone);
         await Should.ThrowAsync<InputValidationException>(() =>
             app.Admin.CreateScheduleAsync("eco-agendado", EchoSchedule("* * * * *") with { Inputs = new JsonObject { ["outro"] = 1 } }, PsrEnvironment.Author, Ct));
         await Should.ThrowAsync<PipelineNotFoundException>(() => app.Admin.CreateScheduleAsync("nao-existe", EchoSchedule("* * * * *"), PsrEnvironment.Author, Ct));

@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Nodes;
-using PythonScriptRunner.Core.Catalog;
 using PythonScriptRunner.Core.Values;
 
 namespace PythonScriptRunner.Core.Execution;

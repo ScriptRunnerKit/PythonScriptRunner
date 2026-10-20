@@ -225,6 +225,35 @@ namespace PythonScriptRunner.EntityFrameworkCore.Migrations
                     b.ToTable("audit_events", "psr");
                 });
 
+            modelBuilder.Entity("PythonScriptRunner.EntityFrameworkCore.Entities.DashboardKeyEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FriendlyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("friendly_name");
+
+                    b.Property<string>("Xml")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("xml");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dashboard_keys");
+
+                    b.ToTable("dashboard_keys", "psr");
+                });
+
             modelBuilder.Entity("PythonScriptRunner.EntityFrameworkCore.Entities.IdempotencyKeyEntity", b =>
                 {
                     b.Property<string>("Scope")

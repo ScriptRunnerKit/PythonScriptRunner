@@ -67,7 +67,7 @@ public sealed class PipelineRulesTests
     [MemberData(nameof(Compatibility))]
     public void Spec003_AC06_TypeCompatibility(FieldType source, FieldType target, bool accepted)
     {
-        TypeCompatibility.IsAssignable(new FieldDefinition("s", source), new FieldDefinition("t", target)).ShouldBe(accepted);
+        FieldCompatibility.IsAssignable(new FieldDefinition("s", source), new FieldDefinition("t", target)).ShouldBe(accepted);
     }
 
     public static TheoryData<FieldType, FieldType, bool> Compatibility() => new()
@@ -92,8 +92,8 @@ public sealed class PipelineRulesTests
         var target = new FieldDefinition("t", FieldType.Table) { Columns = [new TableColumn("x", FieldType.Number)] };
         var missing = new FieldDefinition("t", FieldType.Table) { Columns = [new TableColumn("y", FieldType.Number)] };
 
-        TypeCompatibility.IsAssignable(source, target).ShouldBeTrue();
-        TypeCompatibility.IsAssignable(source, missing).ShouldBeFalse();
+        FieldCompatibility.IsAssignable(source, target).ShouldBeTrue();
+        FieldCompatibility.IsAssignable(source, missing).ShouldBeFalse();
     }
 
     private static ValidationReport Validate(PipelineDefinition pipeline) =>

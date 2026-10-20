@@ -21,7 +21,7 @@ public sealed class SchemaTests(PostgresFixture postgres, PythonFixture python)
     private static readonly string[] Tables =
     [
         "stages", "stage_versions", "pipelines", "pipeline_versions", "pipeline_steps", "schedules", "runs", "step_runs",
-        "step_attempts", "attempt_logs", "artifacts", "artifact_contents", "outbox_messages", "idempotency_keys", "audit_events",
+        "step_attempts", "attempt_logs", "artifacts", "artifact_contents", "outbox_messages", "idempotency_keys", "audit_events", "dashboard_keys",
     ];
 
     [Fact]

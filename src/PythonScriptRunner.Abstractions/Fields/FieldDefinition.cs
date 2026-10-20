@@ -1,10 +1,12 @@
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace PythonScriptRunner;
 
 /// <summary>Declaration of one input or output of a stage.</summary>
 /// <param name="Name">Field name (<c>^[a-z_][a-z0-9_]{0,63}$</c>).</param>
 /// <param name="Type">Field type.</param>
+[JsonConverter(typeof(FieldDefinitionJsonConverter))]
 public sealed record FieldDefinition(string Name, FieldType Type)
 {
     /// <summary>Whether a value must be provided (inputs) or produced (outputs). Default: <c>true</c>.</summary>
