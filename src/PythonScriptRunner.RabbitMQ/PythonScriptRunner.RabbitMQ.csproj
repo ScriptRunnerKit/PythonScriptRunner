@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>PythonScriptRunner.RabbitMQ</RootNamespace>
+    <Description>RabbitMQ transport for PythonScriptRunner: outbox relay with publisher confirms, queued runs, public StartPipelineRun command, run events and subscriptions.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PythonScriptRunner.EntityFrameworkCore\PythonScriptRunner.EntityFrameworkCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PythonScriptRunner.RabbitMQ.Tests" />
+    <InternalsVisibleTo Include="PythonScriptRunner.Worker.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+
+</Project>
