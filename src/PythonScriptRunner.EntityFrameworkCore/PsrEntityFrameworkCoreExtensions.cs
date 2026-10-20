@@ -44,6 +44,21 @@ public static class PsrEntityFrameworkCoreExtensions
         services.TryAddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.TryAddSingleton<IOutboxWriter, OutboxWriter>();
         services.TryAddSingleton<RunLoader>();
+        services.TryAddSingleton<IRunMessageOutbox, NullRunMessageOutbox>();
+        services.TryAddSingleton(provider => new PsrClock(
+            provider.GetRequiredService<PsrDataSource>(), options, provider.GetRequiredService<TimeProvider>()));
+        services.TryAddSingleton(provider => new PsrOutbox(
+            provider.GetRequiredService<IDbContextFactory<PsrDbContext>>(), provider.GetRequiredService<PsrClock>()));
+        services.TryAddSingleton(provider => new AsyncRunLifecycle(
+            provider.GetRequiredService<IDbContextFactory<PsrDbContext>>(),
+            provider.GetRequiredService<ArtifactStore>(),
+            provider.GetRequiredService<IIdempotencyStore>(),
+            provider.GetRequiredService<RunLoader>(),
+            provider.GetRequiredService<IRunMessageOutbox>(),
+            provider.GetRequiredService<PsrClock>(),
+            provider.GetRequiredService<ICatalog>(),
+            provider.GetRequiredService<IRunEngine>(),
+            options));
         services.Replace(ServiceDescriptor.Singleton<IRunRecorder, EfRunRecorder>());
         services.TryAddSingleton<IRunManager, EfRunManager>();
         services.TryAddSingleton<IAuditWriter, AuditWriter>();

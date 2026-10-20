@@ -107,6 +107,12 @@ public sealed record RunStarting
     /// <summary>Deduplication key given by the caller.</summary>
     public string? IdempotencyKey { get; init; }
 
+    /// <summary>Correlation given by the caller.</summary>
+    public string? CorrelationId { get; init; }
+
+    /// <summary>W3C trace context of the caller (<c>traceparent</c>).</summary>
+    public string? TraceParent { get; init; }
+
     /// <summary>Validated inputs in wire format (files carry metadata only).</summary>
     public required JsonObject Inputs { get; init; }
 

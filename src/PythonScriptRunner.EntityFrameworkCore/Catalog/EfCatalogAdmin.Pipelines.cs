@@ -235,12 +235,14 @@ internal sealed partial class EfCatalogAdmin
             }
 
             var steps = await EfCatalog.LoadStepsAsync(db, row.Id, cancellationToken).ConfigureAwait(false);
-            var report = await pipelineValidator.ValidateAsync(CatalogMapping.ToPipeline(row.Pipeline, row, steps), cancellationToken).ConfigureAwait(false);
+            var definition = CatalogMapping.ToPipeline(row.Pipeline, row, steps);
+            var report = await pipelineValidator.ValidateAsync(definition, cancellationToken).ConfigureAwait(false);
             if (!report.IsValid)
             {
                 throw new DefinitionInvalidException(PsrErrorCodes.PipelineInvalid, report);
             }
 
+            List<ValidationIssue> warnings = [.. report.Warnings, .. await ScheduleWarningsAsync(db, row.PipelineId, definition, cancellationToken).ConfigureAwait(false)];
             var now = time.GetUtcNow();
             row.Status = VersionStatus.Published;
             row.PublishedAt = now;
@@ -252,7 +254,7 @@ internal sealed partial class EfCatalogAdmin
             AuditLog.Add(db, new AuditEntry(actor, AuditActions.PipelinePublished, "PipelineVersion", row.Id, $"{key}@{version}"), now);
             await SaveAsync(db, cancellationToken, conflict: Current(() => GetPipelineDraftAsync(key, CancellationToken.None))).ConfigureAwait(false);
             catalog.InvalidatePipeline(key);
-            return new PipelinePublication(CatalogMapping.ToPipelineVersionDetail(row.Pipeline, row, steps), report.Warnings);
+            return new PipelinePublication(CatalogMapping.ToPipelineVersionDetail(row.Pipeline, row, steps), warnings);
         }
     }
 

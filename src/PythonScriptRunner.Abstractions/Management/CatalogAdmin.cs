@@ -238,6 +238,52 @@ public interface ICatalogAdmin
     /// <param name="actor">Author.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<ImportReport> ImportAsync(Stream zip, Actor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Lists schedules ordered by name.</summary>
+    /// <param name="query">Pipeline filter and page.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<Page<ScheduleDetail>> ListSchedulesAsync(ScheduleQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>Reads a schedule.</summary>
+    /// <param name="id">Schedule identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The schedule, or <c>null</c> when it does not exist.</returns>
+    Task<ScheduleDetail?> GetScheduleAsync(ScheduleId id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a cron schedule of a pipeline. Validates the cron expression, the IANA time zone, the version (pinned or the latest
+    /// published) and the fixed inputs: <c>SCHEDULE_INVALID</c>, <c>SCHEDULE_FILE_INPUT</c> (pipelines with file inputs cannot be
+    /// scheduled) or <see cref="InputValidationException"/>.
+    /// </summary>
+    /// <param name="pipelineKey">Pipeline key.</param>
+    /// <param name="schedule">Schedule settings.</param>
+    /// <param name="actor">Author.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<ScheduleDetail> CreateScheduleAsync(string pipelineKey, ScheduleData schedule, Actor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Changes a schedule (same validation as <see cref="CreateScheduleAsync"/>); the next run is recomputed.</summary>
+    /// <param name="id">Schedule identifier.</param>
+    /// <param name="schedule">New settings.</param>
+    /// <param name="expectedRowVersion">Row version read by the caller.</param>
+    /// <param name="actor">Author.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<ScheduleDetail> UpdateScheduleAsync(
+        ScheduleId id, ScheduleData schedule, uint expectedRowVersion, Actor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Enables or disables a schedule; enabling recomputes the next run from now.</summary>
+    /// <param name="id">Schedule identifier.</param>
+    /// <param name="enabled">Whether it fires.</param>
+    /// <param name="expectedRowVersion">Row version read by the caller.</param>
+    /// <param name="actor">Author.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<ScheduleDetail> SetScheduleEnabledAsync(
+        ScheduleId id, bool enabled, uint expectedRowVersion, Actor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes a schedule (its runs stay in the history).</summary>
+    /// <param name="id">Schedule identifier.</param>
+    /// <param name="actor">Author.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task DeleteScheduleAsync(ScheduleId id, Actor actor, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Search and page of a catalog list.</summary>

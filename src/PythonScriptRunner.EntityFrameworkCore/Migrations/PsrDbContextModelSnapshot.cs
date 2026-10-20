@@ -666,6 +666,10 @@ namespace PythonScriptRunner.EntityFrameworkCore.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("trigger");
 
+                    b.Property<string>("TriggerDetails")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("trigger_details");
+
                     b.Property<string>("TriggeredBy")
                         .IsRequired()
                         .HasMaxLength(200)

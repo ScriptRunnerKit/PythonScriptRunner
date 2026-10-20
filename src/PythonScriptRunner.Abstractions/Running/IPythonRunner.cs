@@ -42,4 +42,7 @@ public sealed record RunOptions
 
     /// <summary>How the run was started. Default: <see cref="RunTrigger.Library"/>.</summary>
     public RunTrigger Trigger { get; init; } = RunTrigger.Library;
+
+    /// <summary>Correlation of the caller, stored with the run and returned in its events (requires persistence).</summary>
+    public string? CorrelationId { get; init; }
 }

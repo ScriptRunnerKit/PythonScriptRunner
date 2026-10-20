@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PythonScriptRunner.Worker\PythonScriptRunner.Worker.csproj" />
+    <ProjectReference Include="..\..\hosts\PythonScriptRunner.WorkerHost\PythonScriptRunner.WorkerHost.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Builds the psrunner wheel and warms the default environment (same fixtures as the Core and persistence tests). -->
+    <Compile Include="..\PythonScriptRunner.Core.Tests\Infrastructure\PythonFixture.cs" Link="Infrastructure\PythonFixture.cs" />
+    <Compile Include="..\PythonScriptRunner.Core.Tests\Infrastructure\RunnerHost.cs" Link="Infrastructure\RunnerHost.cs" />
+    <Compile Include="..\PythonScriptRunner.EntityFrameworkCore.Tests\Infrastructure\PostgresFixture.cs" Link="Infrastructure\PostgresFixture.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="PythonScriptRunner.Core.Tests.Infrastructure" />
+    <Using Include="PythonScriptRunner.EntityFrameworkCore.Tests.Infrastructure" />
+    <Using Include="PythonScriptRunner.Testing" />
+    <Using Include="Shouldly" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>

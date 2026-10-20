@@ -1,0 +1,56 @@
+{
+  "$schema": "../../../../../schemas/stage.v1.json",
+  "key": "enviar-email",
+  "version": 1,
+  "name": "Enviar e-mail",
+  "description": "Envia um e-mail por SMTP, com um anexo opcional.",
+  "idempotent": false,
+  "secrets": [
+    "SMTP_USUARIO",
+    "SMTP_SENHA"
+  ],
+  "inputs": [
+    {
+      "name": "smtp_host",
+      "type": "string"
+    },
+    {
+      "name": "smtp_porta",
+      "type": "integer",
+      "required": false,
+      "default": 465
+    },
+    {
+      "name": "remetente",
+      "type": "string"
+    },
+    {
+      "name": "destinatarios",
+      "type": "list",
+      "itemType": "string"
+    },
+    {
+      "name": "assunto",
+      "type": "string"
+    },
+    {
+      "name": "corpo",
+      "type": "string"
+    },
+    {
+      "name": "anexo",
+      "type": "file",
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "message_id",
+      "type": "string"
+    },
+    {
+      "name": "enviado_em",
+      "type": "datetime"
+    }
+  ]
+}

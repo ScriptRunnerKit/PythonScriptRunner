@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/messages/start-pipeline-run.v1.json",
+  "title": "PythonScriptRunner StartPipelineRun command (psr.start-pipeline-run.v1)",
+  "description": "Publish to the exchange psr.public with the routing key pipeline.start (AMQP type psr.start-pipeline-run.v1, content type application/json). The run is announced with run.queued, or refused with run.rejected; both carry the correlationId.",
+  "type": "object",
+  "required": ["pipelineKey"],
+  "properties": {
+    "pipelineKey": {
+      "description": "Key of the pipeline.",
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "version": {
+      "description": "Version to run; null runs the latest published version.",
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "inputs": {
+      "description": "Pipeline inputs in the wire format of the data mapping. Files are not accepted: pipelines with file inputs are rejected.",
+      "type": ["object", "null"]
+    },
+    "idempotencyKey": {
+      "description": "Repeated commands with the same key within 24 hours return the same run. Without it, the AMQP message_id is used.",
+      "type": ["string", "null"],
+      "maxLength": 190
+    },
+    "correlationId": {
+      "description": "Returned in every event of the run.",
+      "type": ["string", "null"],
+      "maxLength": 190
+    },
+    "requestedBy": {
+      "description": "Name of the calling system; the run is triggered by queue:<requestedBy>.",
+      "type": ["string", "null"],
+      "maxLength": 190
+    }
+  }
+}

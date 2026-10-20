@@ -61,13 +61,19 @@ internal sealed class WorkspaceJanitor(IOptions<PythonScriptRunnerOptions> optio
 {
     private int _cleaned;
 
+    /// <summary>Cleans once per process (the worker also calls <see cref="Clean"/> periodically).</summary>
     public void EnsureCleaned()
     {
-        if (Interlocked.Exchange(ref _cleaned, 1) == 1)
+        if (Interlocked.Exchange(ref _cleaned, 1) == 0)
         {
-            return;
+            Clean();
         }
+    }
 
+    /// <summary>Removes leftover folders now.</summary>
+    /// <returns>How many folders were removed.</returns>
+    public int Clean()
+    {
         var settings = options.Value;
         var cutoff = (time.GetUtcNow() - settings.OrphanRetention).UtcDateTime;
         var removed = 0;
@@ -93,5 +99,7 @@ internal sealed class WorkspaceJanitor(IOptions<PythonScriptRunnerOptions> optio
         {
             Log.OrphansRemoved(logger, removed, settings.OrphanRetention);
         }
+
+        return removed;
     }
 }

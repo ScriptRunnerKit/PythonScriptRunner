@@ -5,7 +5,8 @@ com contrato de entrada/saída, trilhas (**Pipelines**), execução assíncrona 
 cron e painel Vue opcional.
 
 > Projeto em desenvolvimento. Esta versão entrega o **Core Runner** (execução síncrona de Stages e de
-> trilhas), o SDK Python **`psrunner`** e a **persistência em PostgreSQL** (catálogo versionado e histórico).
+> trilhas), o SDK Python **`psrunner`**, a **persistência em PostgreSQL** (catálogo versionado e histórico) e a
+> **execução assíncrona** com RabbitMQ, worker e agendamento cron.
 
 ## Como funciona
 
@@ -120,11 +121,45 @@ await app.Services.MigratePythonScriptRunnerAsync();   // explícito; ou Generat
   um job de manutenção cria partições à frente e remove as antigas. Uma trilha pode encurtar a retenção.
 - **Auditoria:** ações humanas (`Actor.User(...)`) ficam em `psr.audit_events`; disparos automáticos ficam na própria execução.
 
+## Fila, worker e agendamento (RabbitMQ)
+
+Com `PythonScriptRunner.RabbitMQ` e `PythonScriptRunner.Worker`, execuções podem ser enfileiradas. Cada passo é uma
+mensagem: o worker assume o passo com um *lease*, executa o processo Python e grava o resultado e a mensagem do próximo
+passo na mesma transação (outbox no PostgreSQL). Enfileirar funciona mesmo com o broker fora do ar.
+
+```csharp
+builder.Services
+    .AddPythonScriptRunner()
+    .AddEntityFrameworkCore(o => o.UseNpgsql(builder.Configuration.GetConnectionString("psr")!))
+    .AddRabbitMq(o => o.ConnectionString = builder.Configuration.GetConnectionString("rabbitmq"))   // RabbitMQ 3.13+
+    .AddWorker(o => o.MaxConcurrency = 8)                         // só nos processos que executam passos
+    .AddRunEventHandler<NotificarErp>(s => s.Subscription("erp").On("run.succeeded.calculo-progressao", "run.failed.*"));
+builder.Services.AddHealthChecks().AddPythonScriptRunnerChecks();  // banco, broker e uv
+
+// ...
+RunHandle run = await queue.EnqueuePipelineAsync("calculo-progressao", new { a1 = 1, razao = 2, n = 4, coeficientes = new[] { 1, 0, 1 } });
+```
+
+- **Confiabilidade:** retry automático por Stage com atraso exponencial; worker perdido é detectado pelo *lease* e o
+  passo é retomado (Stage idempotente ou com retry restante) ou falha com `WorkerLost` para reprocesso manual;
+  mensagens duplicadas não executam o passo duas vezes.
+- **Concorrência:** `MaxConcurrency` por worker e `max_concurrent_runs` por trilha (as demais esperam como `Pending`, em ordem).
+- **Cancelamento:** `IRunManager.CancelAsync` encerra a árvore de processos no worker que executa o passo.
+- **Agendamento:** `ICatalogAdmin.CreateScheduleAsync` com expressão cron e fuso IANA (padrão `America/Sao_Paulo`);
+  ocorrências perdidas viram uma execução de recuperação; vários workers nunca disparam a mesma ocorrência.
+- **Sistemas externos:** o comando público `StartPipelineRun` (exchange `psr.public`) inicia trilhas e os eventos
+  `run.*`/`step.*` (exchange `psr.events`) informam o andamento e as saídas. Contratos em `schemas/messages`.
+- **Observabilidade:** `ActivitySource` e `Meter` `PythonScriptRunner`; o `traceparent` acompanha a execução até o worker.
+
+O host `hosts/PythonScriptRunner.WorkerHost` é um worker pronto, configurado por variáveis de ambiente
+(`ConnectionStrings__psr`, `ConnectionStrings__rabbitmq`, `PythonScriptRunner__Worker__MaxConcurrency`,
+`PythonScriptRunner__Secrets__<NOME>`, `PSR_AUTO_MIGRATE=true`), com `/health/live`, `/health/ready`, logs JSON e OTLP.
+
 ## Requisitos
 
 - .NET 10 SDK
 - [uv](https://docs.astral.sh/uv/) no PATH (cria e cacheia um ambiente Python por conjunto de dependências)
-- PostgreSQL 16+ apenas para o pacote de persistência (os testes usam Docker/Testcontainers)
+- PostgreSQL 16+ apenas para o pacote de persistência e RabbitMQ 3.13+ para a fila (os testes usam Docker/Testcontainers)
 
 ## Estrutura
 
@@ -132,9 +167,12 @@ await app.Services.MigratePythonScriptRunnerAsync();   // explícito; ou Generat
 |-------|----------|
 | `src/PythonScriptRunner.Abstractions` | contratos públicos (tipos de campo, `StageDefinition`, `RunResult`, `PsrFile`, interfaces) |
 | `src/PythonScriptRunner.Core` | catálogos (código e pasta), validação, ambientes uv, executor de processos, runner |
-| `src/PythonScriptRunner.EntityFrameworkCore` | PostgreSQL: catálogo versionado, histórico, arquivos, idempotência, outbox, auditoria, retenção |
+| `src/PythonScriptRunner.EntityFrameworkCore` | PostgreSQL: catálogo versionado, histórico, arquivos, idempotência, outbox, auditoria, retenção, agendamentos e ciclo das execuções enfileiradas |
+| `src/PythonScriptRunner.RabbitMQ` | topologia, relay do outbox, `IRunQueue`, comando público, eventos e assinaturas |
+| `src/PythonScriptRunner.Worker` | execução dos passos enfileirados, *lease*, retry, cancelamento, cron |
+| `hosts` | `WorkerHost` e `ServiceDefaults` (Serilog, OpenTelemetry, health checks) |
 | `python/psrunner` | SDK Python (`@stage`, `Context`, `File`, `StageError`, `psrunner.testing`, CLI) |
-| `schemas` | JSON Schemas do `stage.json` e do `*.pipeline.json` |
+| `schemas` | JSON Schemas do `stage.json`, do `*.pipeline.json` e das mensagens públicas |
 | `tests` | testes .NET (unitários e de integração com Python real) e fixtures de trilha |
 
 ## Desenvolvimento
@@ -143,6 +181,8 @@ await app.Services.MigratePythonScriptRunnerAsync();   // explícito; ou Generat
 dotnet build
 dotnet test --project tests/PythonScriptRunner.Core.Tests
 dotnet test --project tests/PythonScriptRunner.EntityFrameworkCore.Tests   # precisa de Docker
+dotnet test --project tests/PythonScriptRunner.RabbitMQ.Tests              # precisa de Docker
+dotnet test --project tests/PythonScriptRunner.Worker.Tests                # precisa de Docker
 
 cd python/psrunner
 uv sync
