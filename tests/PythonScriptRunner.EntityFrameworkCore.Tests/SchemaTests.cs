@@ -52,6 +52,22 @@ public sealed class SchemaTests(PostgresFixture postgres, PythonFixture python)
     }
 
     [Fact]
+    public async Task Spec009_AC08_ConcurrentMigrations_AreAppliedOnce()
+    {
+        await using var first = await PsrTestHost.CreateAsync(postgres, python, migrate: false);
+        var services = new ServiceCollection();
+        services.AddPythonScriptRunner().AddEntityFrameworkCore(o => o.UseNpgsql(first.ConnectionString));
+        await using var second = services.BuildServiceProvider();
+
+        await Task.WhenAll(
+            first.Services.MigratePythonScriptRunnerAsync(TestContext.Current.CancellationToken),
+            second.MigratePythonScriptRunnerAsync(TestContext.Current.CancellationToken));
+
+        await using var db = await first.DbAsync();
+        (await first.ScalarAsync<long>("SELECT count(*) FROM psr.__ef_migrations_history")).ShouldBe(db.Database.GetMigrations().Count());
+    }
+
+    [Fact]
     public async Task Spec004_AC02_WithoutMigrationStartupDoesNotTouchTheDatabaseAndHealthReportsPendingSchema()
     {
         await using var host = await PsrTestHost.CreateAsync(postgres, python, migrate: false,

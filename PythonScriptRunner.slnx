@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/hosts/">
+    <Project Path="hosts/PythonScriptRunner.ServiceDefaults/PythonScriptRunner.ServiceDefaults.csproj" />
+    <Project Path="hosts/PythonScriptRunner.WorkerHost/PythonScriptRunner.WorkerHost.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/PythonScriptRunner.Abstractions/PythonScriptRunner.Abstractions.csproj" />
     <Project Path="src/PythonScriptRunner.Core/PythonScriptRunner.Core.csproj" />

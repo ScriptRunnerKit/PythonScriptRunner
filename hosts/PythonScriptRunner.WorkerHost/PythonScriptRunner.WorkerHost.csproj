@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>PythonScriptRunner.WorkerHost</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PythonScriptRunner.Worker\PythonScriptRunner.Worker.csproj" />
+    <ProjectReference Include="..\PythonScriptRunner.ServiceDefaults\PythonScriptRunner.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>
