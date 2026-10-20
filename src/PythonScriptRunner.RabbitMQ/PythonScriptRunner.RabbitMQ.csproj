@@ -12,6 +12,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PythonScriptRunner.RabbitMQ.Tests" />
     <InternalsVisibleTo Include="PythonScriptRunner.Worker.Tests" />
+    <InternalsVisibleTo Include="PythonScriptRunner.Dashboard.Tests" />
   </ItemGroup>
 
   <ItemGroup>
