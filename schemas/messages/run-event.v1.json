@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/messages/run-event.v1.json",
+  "title": "PythonScriptRunner run event (psr.run-event.v1)",
+  "description": "Published on the topic exchange psr.events with the routing key <type>.<pipeline key> or <type>.stage:<stage key> (AMQP type psr.run-event.v1). Fields are only added within v1; consumers must ignore unknown fields.",
+  "type": "object",
+  "required": ["eventId", "type", "occurredAt"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "type": {
+      "enum": [
+        "run.queued", "run.rejected", "run.started", "step.started", "step.succeeded", "step.retry-scheduled", "step.failed",
+        "run.succeeded", "run.failed", "run.cancelled"
+      ]
+    },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "runId": {
+      "description": "Null when a request was rejected before a run existed.",
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "kind": { "enum": ["Pipeline", "PipelineTest", "Stage", "StageTest", null] },
+    "pipelineKey": { "type": ["string", "null"] },
+    "pipelineVersion": { "type": ["integer", "null"] },
+    "stageKey": { "type": ["string", "null"] },
+    "stageVersion": { "type": ["integer", "null"] },
+    "correlationId": { "type": ["string", "null"] },
+    "trigger": { "enum": ["Library", "Dashboard", "Schedule", "QueueCommand", null] },
+    "status": { "enum": ["Pending", "Queued", "Running", "Succeeded", "Failed", "Cancelling", "Cancelled", null] },
+    "step": {
+      "description": "The step of step.* events.",
+      "type": ["object", "null"],
+      "required": ["key", "order", "attempt"],
+      "properties": {
+        "key": { "type": "string" },
+        "order": { "type": "integer", "minimum": 1 },
+        "attempt": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "error": {
+      "type": ["object", "null"],
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "description": "An error kind of the data mapping (e.g. ScriptError) or Rejected.", "type": "string" },
+        "code": { "type": ["string", "null"] },
+        "message": { "type": "string" },
+        "step": { "type": ["string", "null"] },
+        "reasons": { "description": "Why a request was rejected.", "type": ["array", "null"], "items": { "type": "string" } }
+      }
+    },
+    "outputs": {
+      "description": "Declared outputs of run.succeeded: values inline; files as {\"$artifact\": {id, name, contentType, size}}. Null above 256 KB.",
+      "type": ["object", "null"]
+    },
+    "outputsTruncated": { "type": "boolean" },
+    "retryAt": { "type": ["string", "null"], "format": "date-time" },
+    "triggerDetails": {
+      "description": "Details of the trigger, e.g. scheduleId, scheduledFor and missedOccurrences of a schedule.",
+      "type": ["object", "null"]
+    }
+  }
+}
