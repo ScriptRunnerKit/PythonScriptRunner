@@ -136,8 +136,9 @@ public sealed class QueueConsumer : IAsyncDisposable
             {
                 return;
             }
-            catch (PsrConfigurationException)
+            catch (PsrConfigurationException ex)
             {
+                Log.TopologyInvalid(_logger, _settings.Queue, ex);
                 throw;
             }
             catch (Exception ex) when (ex is BrokerUnreachableException or OperationInterruptedException or AlreadyClosedException or IOException

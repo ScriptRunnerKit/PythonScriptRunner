@@ -44,8 +44,8 @@ internal static partial class Log
     [LoggerMessage(101, LogLevel.Warning, "RabbitMQ is unreachable ({Reason}); queued runs stay in the outbox until it comes back")]
     public static partial void BrokerUnreachable(ILogger logger, string reason);
 
-    [LoggerMessage(102, LogLevel.Critical, "The RabbitMQ topology is invalid; stopping the application")]
-    public static partial void TopologyInvalid(ILogger logger, Exception exception);
+    [LoggerMessage(102, LogLevel.Critical, "The RabbitMQ topology is invalid; the consumer of {Queue} stopped")]
+    public static partial void TopologyInvalid(ILogger logger, string queue, Exception exception);
 
     [LoggerMessage(103, LogLevel.Warning, "Outbox message {MessageId} ({MessageType}) was not published: {Error}")]
     public static partial void PublishFailed(ILogger logger, Guid messageId, string messageType, string error);
