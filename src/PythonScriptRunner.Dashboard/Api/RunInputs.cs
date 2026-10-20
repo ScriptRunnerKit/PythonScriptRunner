@@ -149,7 +149,10 @@ internal sealed class RunInputs : IAsyncDisposable
             }
 
             var safeName = Path.GetFileName(fileName.Replace('\\', '/'));
-            var contentType = section.ContentType is { Length: > 0 } type ? type : PsrFile.GuessContentType(safeName);
+            // Only the media type counts (browsers may add parameters such as charset to text files).
+            var contentType = MediaTypeHeaderValue.TryParse(section.ContentType, out var media) && media.MediaType.HasValue
+                ? media.MediaType.Value!
+                : PsrFile.GuessContentType(safeName);
             if (!_files.TryGetValue(name, out var list))
             {
                 _files[name] = list = [];

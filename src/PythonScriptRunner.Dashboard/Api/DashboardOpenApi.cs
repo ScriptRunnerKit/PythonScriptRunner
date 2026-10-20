@@ -52,6 +52,57 @@ internal static class DashboardOpenApi
         });
     }
 
+    /// <summary>
+    /// Descriptions come from XML comments and keep the line endings of the checkout (CRLF on Windows); the served document uses
+    /// LF everywhere, so it is the same on every OS (its snapshot feeds the panel types).
+    /// </summary>
+    public static string NormalizeLineEndings(string json)
+    {
+        var document = JsonNode.Parse(json);
+        Normalize(document);
+        return document?.ToJsonString() ?? json;
+
+        static JsonNode? Fix(JsonNode? node) =>
+            node is JsonValue value && value.TryGetValue<string>(out var text) && text.Contains('\r', StringComparison.Ordinal)
+                ? JsonValue.Create(text.ReplaceLineEndings("\n"))
+                : null;
+
+        static void Normalize(JsonNode? node)
+        {
+            switch (node)
+            {
+                case JsonObject obj:
+                    foreach (var (name, child) in obj.ToList())
+                    {
+                        if (Fix(child) is { } fixedValue)
+                        {
+                            obj[name] = fixedValue;
+                        }
+                        else
+                        {
+                            Normalize(child);
+                        }
+                    }
+
+                    break;
+                case JsonArray array:
+                    for (var i = 0; i < array.Count; i++)
+                    {
+                        if (Fix(array[i]) is { } fixedValue)
+                        {
+                            array[i] = fixedValue;
+                        }
+                        else
+                        {
+                            Normalize(array[i]);
+                        }
+                    }
+
+                    break;
+            }
+        }
+    }
+
     /// <summary>Strongly typed identifiers (<c>RunId</c>, <c>ArtifactId</c>...) are written as their GUID text.</summary>
     private static bool IsIdentifier(Type type) =>
         type is { IsValueType: true, Namespace: "PythonScriptRunner" } && type.Name.EndsWith("Id", StringComparison.Ordinal)

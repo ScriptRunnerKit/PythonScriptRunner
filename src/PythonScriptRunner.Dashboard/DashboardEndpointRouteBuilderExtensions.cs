@@ -68,8 +68,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 {
                     var provider = http.RequestServices.GetRequiredKeyedService<IOpenApiDocumentProvider>(DashboardOpenApi.Document);
                     var document = await provider.GetOpenApiDocumentAsync(cancellationToken).ConfigureAwait(false);
-                    return TypedResults.Text(await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_1, cancellationToken).ConfigureAwait(false),
-                        "application/json; charset=utf-8");
+                    var json = await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_1, cancellationToken).ConfigureAwait(false);
+                    return TypedResults.Text(DashboardOpenApi.NormalizeLineEndings(json), "application/json; charset=utf-8");
                 })
                 .AllowAnonymous()
                 .ExcludeFromDescription();
