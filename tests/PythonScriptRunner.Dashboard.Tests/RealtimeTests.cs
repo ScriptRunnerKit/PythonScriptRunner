@@ -14,6 +14,7 @@ public sealed class RealtimeTests(PostgresFixture postgres, BrokerFixture broker
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task Spec007_AC11_SubscribedClientsOfTwoInstances_ReceiveStepAndRunUpdatesInUnderOneSecond()
     {
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python);

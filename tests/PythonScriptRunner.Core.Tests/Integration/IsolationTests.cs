@@ -8,6 +8,7 @@ namespace PythonScriptRunner.Core.Tests.Integration;
 public sealed class IsolationTests(PythonFixture fixture)
 {
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task Spec001_AC07_Timeout_KillsTheProcessTree()
     {
         // Arrange
@@ -44,6 +45,7 @@ public sealed class IsolationTests(PythonFixture fixture)
     }
 
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task Spec001_AC08_Cancellation_StopsTheRun()
     {
         await using var host = RunnerHost.Create(fixture, b => b.AddStage("espera", s => s.Script("""

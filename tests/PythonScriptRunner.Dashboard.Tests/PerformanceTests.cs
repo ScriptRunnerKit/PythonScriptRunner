@@ -16,6 +16,7 @@ public sealed class PerformanceTests(PostgresFixture postgres, BrokerFixture bro
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task Spec007_AC13_MainReadsWith90DaysOfRuns_AnswerWithP95Under500Ms()
     {
         var perDay = int.TryParse(Environment.GetEnvironmentVariable("PSR_PERF_RUNS_PER_DAY"), CultureInfo.InvariantCulture, out var configured)
