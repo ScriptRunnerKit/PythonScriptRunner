@@ -48,7 +48,8 @@ A pull request is merged only when every job of `.github/workflows/ci.yml` is gr
 ## Conventions
 
 - **Tests:** every acceptance criterion and every fixed bug has a test. Integration tests run against real Python (uv),
-  PostgreSQL and RabbitMQ (Testcontainers).
+  PostgreSQL and RabbitMQ (Testcontainers). A test that asserts a duration gets `[Trait("Category", "Timing")]`: the CI
+  runs those alone, one at a time (`--filter-trait "Category=Timing" --parallel none`).
 - **Public API:** public types and members have XML documentation (the build generates it and fails on warnings).
 - **Packages:** versions live in `Directory.Packages.props` (Central Package Management). Dependabot proposes updates
   every Monday.

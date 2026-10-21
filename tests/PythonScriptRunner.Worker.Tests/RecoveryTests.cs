@@ -10,6 +10,7 @@ public sealed class RecoveryTests(PostgresFixture postgres, BrokerFixture broker
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task Spec006_AC05_LostWorker_IdempotentStepIsRecoveredByAnother()
     {
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python);
@@ -49,6 +50,7 @@ public sealed class RecoveryTests(PostgresFixture postgres, BrokerFixture broker
     }
 
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task Spec006_AC09_Cancel_StopsTheProcessInTheWorker()
     {
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python);
