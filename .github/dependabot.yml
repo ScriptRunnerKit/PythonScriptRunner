@@ -28,6 +28,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # The Node.js types follow the Node.js version of the panel (.nvmrc): a new major comes with a Node.js upgrade.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       panel:
         patterns: ["*"]
