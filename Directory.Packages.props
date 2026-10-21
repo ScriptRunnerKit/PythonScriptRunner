@@ -3,6 +3,11 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.6.2" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.2" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.2" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.6.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.2" />
     <PackageVersion Include="Cronos" Version="0.13.0" />
     <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.13.0" />
     <PackageVersion Include="JsonSchema.Net" Version="9.4.1" />

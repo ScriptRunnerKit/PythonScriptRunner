@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/hosts/">
+    <Project Path="hosts/PythonScriptRunner.AppHost/PythonScriptRunner.AppHost.csproj" />
     <Project Path="hosts/PythonScriptRunner.DashboardHost/PythonScriptRunner.DashboardHost.csproj" />
     <Project Path="hosts/PythonScriptRunner.ServiceDefaults/PythonScriptRunner.ServiceDefaults.csproj" />
     <Project Path="hosts/PythonScriptRunner.WorkerHost/PythonScriptRunner.WorkerHost.csproj" />
@@ -14,6 +15,7 @@
     <Project Path="src/PythonScriptRunner.Worker/PythonScriptRunner.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PythonScriptRunner.AppHost.Tests/PythonScriptRunner.AppHost.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Containers.Tests/PythonScriptRunner.Containers.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Core.Tests/PythonScriptRunner.Core.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Dashboard.Tests/PythonScriptRunner.Dashboard.Tests.csproj" />
