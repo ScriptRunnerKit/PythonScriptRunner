@@ -17,6 +17,12 @@ version; the `psrunner` SDK has its own version on PyPI.
 
 - The README covers every capability with short examples and links to the guides. The `psrunner` README, the PyPI
   page, is now a complete reference of the SDK.
+- `psrunner` 0.1.1 publishes that README on PyPI. The code is the same as 0.1.0.
+
+### Fixed
+
+- Dashboard: in the field builder of the stage editor, the label of the "required" switch no longer breaks into
+  syllables in the narrow side panel.
 
 ## [0.1.0] - 2026-10-21
 

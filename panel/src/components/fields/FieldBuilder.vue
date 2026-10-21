@@ -133,7 +133,9 @@ function setColumn(index: number, field: FieldDefinition, column: number, change
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <v-row density="compact">
-            <v-col cols="12" md="5">
+            <!-- The builder sits in narrow side panels: the name takes the free width and the switch only its own, so its
+                 label never breaks (md counts the window, not the panel). -->
+            <v-col cols="12" md>
               <v-text-field
                 :model-value="field.name"
                 :label="t('fieldBuilder.name')"
@@ -157,8 +159,9 @@ function setColumn(index: number, field: FieldDefinition, column: number, change
                 "
               />
             </v-col>
-            <v-col cols="12" md="3">
+            <v-col cols="12" md="auto">
               <v-switch
+                class="text-no-wrap"
                 :model-value="field.required !== false"
                 :label="t('fieldBuilder.required')"
                 :readonly="readonly"
