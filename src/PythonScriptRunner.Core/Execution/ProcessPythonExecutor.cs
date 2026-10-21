@@ -17,7 +17,7 @@ internal sealed class ProcessPythonExecutor(TimeProvider time, CgroupMemory cgro
     private const int ProtocolVersion = 1;
 
     /// <summary>Thread pools of the numeric libraries (OpenMP, OpenBLAS, MKL, numexpr, Accelerate).</summary>
-    private static readonly string[] ThreadVariables =
+    internal static readonly string[] ThreadVariables =
         ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"];
     private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan PumpWait = TimeSpan.FromSeconds(5);

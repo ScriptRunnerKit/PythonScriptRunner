@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using PythonScriptRunner.Core.Execution;
 using PythonScriptRunner.Core.Tests.Infrastructure;
 
 namespace PythonScriptRunner.Core.Tests.Integration;
@@ -166,8 +167,9 @@ public sealed class IsolationTests(PythonFixture fixture)
 
         var names = result.GetOutput<JsonArray>("nomes").Select(n => n!.GetValue<string>().ToUpperInvariant()).ToList();
         names.ShouldNotContain("PSR_TEST_HOST_ONLY");
-        // LC_CTYPE is set by the interpreter itself on Linux (PEP 538 locale coercion), not inherited from the host.
-        string[] allowed = ["PATH", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME", "LC_CTYPE"];
+        // LC_CTYPE is set by the interpreter itself on Linux (PEP 538 locale coercion), not inherited from the host. The
+        // thread variables come from the runner when the memory limit falls back to RLIMIT_AS (Linux without cgroup; D-180).
+        string[] allowed = ["PATH", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME", "LC_CTYPE", .. ProcessPythonExecutor.ThreadVariables];
         names.Where(n => !n.StartsWith("PSR_", StringComparison.Ordinal) && !allowed.Contains(n)).ShouldBeEmpty();
     }
 
