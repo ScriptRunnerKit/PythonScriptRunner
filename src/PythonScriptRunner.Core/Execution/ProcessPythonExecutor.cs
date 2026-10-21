@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Options;
 using PythonScriptRunner.Core.Values;
 
 namespace PythonScriptRunner.Core.Execution;
@@ -10,9 +11,14 @@ namespace PythonScriptRunner.Core.Execution;
 /// Runs one attempt as a separate <c>python -I -X utf8 -m psrunner.host</c> process with a clean environment,
 /// a timeout, cancellation, a memory limit and captured output (protocol version 1).
 /// </summary>
-internal sealed class ProcessPythonExecutor(TimeProvider time) : IPythonExecutor
+internal sealed class ProcessPythonExecutor(TimeProvider time, CgroupMemory cgroups, IOptions<PythonScriptRunnerOptions> options)
+    : IPythonExecutor
 {
     private const int ProtocolVersion = 1;
+
+    /// <summary>Thread pools of the numeric libraries (OpenMP, OpenBLAS, MKL, numexpr, Accelerate).</summary>
+    private static readonly string[] ThreadVariables =
+        ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"];
     private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan PumpWait = TimeSpan.FromSeconds(5);
 
@@ -32,7 +38,12 @@ internal sealed class ProcessPythonExecutor(TimeProvider time) : IPythonExecutor
         var masker = new SecretMasker(request.Secrets.Values);
         var stdout = new TailBuffer(request.MaxLogBytes);
         var stderr = new TailBuffer(request.MaxLogBytes);
-        using var process = new Process { StartInfo = BuildStartInfo(request, scriptPath) };
+        // Linux: a cgroup v2 with the real memory limit when the host can create one; otherwise RLIMIT_AS, which counts
+        // reserved memory, so the numeric libraries get one thread each by default (OpenBLAS reserves memory per thread).
+        using var cgroup = cgroups.Create(request.MemoryLimitMb * 1024L * 1024L);
+        var configured = options.Value.ThreadsPerProcess;
+        var threads = configured ?? (cgroup is null && OperatingSystem.IsLinux() ? 1 : null);
+        using var process = new Process { StartInfo = BuildStartInfo(request, scriptPath, cgroup, threads, configured ?? 1) };
         var job = OperatingSystem.IsWindows() ? new WindowsJobObject(request.MemoryLimitMb * 1024L * 1024L) : null;
         try
         {
@@ -67,6 +78,7 @@ internal sealed class ProcessPythonExecutor(TimeProvider time) : IPythonExecutor
                 catch (OperationCanceledException)
                 {
                     stoppedAs = cancellationToken.IsCancellationRequested ? AttemptStatus.Cancelled : AttemptStatus.TimedOut;
+                    cgroup?.Kill();
                     await KillAsync(process, job).ConfigureAwait(false);
                 }
             }
@@ -90,12 +102,21 @@ internal sealed class ProcessPythonExecutor(TimeProvider time) : IPythonExecutor
             var stdoutTail = stdout.ToLogTail(masker);
             var stderrTail = stderr.ToLogTail(masker);
             var exitCode = process.HasExited ? process.ExitCode : -1;
-            return stoppedAs switch
+            var result = stoppedAs switch
             {
                 AttemptStatus.Cancelled => Stopped(ErrorKind.Cancelled, "The run was cancelled.", AttemptStatus.Cancelled),
                 AttemptStatus.TimedOut => Stopped(ErrorKind.Timeout, $"The attempt exceeded its timeout of {request.Timeout}.", AttemptStatus.TimedOut),
                 _ => OutputReader.Read(request, exitCode, processDuration, stdoutTail, stderrTail),
             };
+
+            // With a cgroup the kernel kills the process over memory.max (no MemoryError reaches the SDK).
+            return stoppedAs is null && result.Status == AttemptStatus.Failed && cgroup?.OutOfMemory() == true
+                ? result with
+                {
+                    Error = ExecutionResult.Failure(
+                        ErrorKind.MemoryLimitExceeded, $"The attempt exceeded its memory limit of {request.MemoryLimitMb} MB.", "OUT_OF_MEMORY").Error,
+                }
+                : result;
 
             ExecutionResult Stopped(ErrorKind kind, string message, AttemptStatus status) =>
                 ExecutionResult.Failure(kind, message, status: status) with
@@ -218,7 +239,7 @@ internal sealed class ProcessPythonExecutor(TimeProvider time) : IPythonExecutor
         }
     }
 
-    private static ProcessStartInfo BuildStartInfo(ExecutionRequest request, string scriptPath)
+    private static ProcessStartInfo BuildStartInfo(ExecutionRequest request, string scriptPath, CgroupLease? cgroup, int? threads, int fallbackThreads)
     {
         var work = request.WorkDirectory;
         var temp = Path.Combine(work, "tmp");
@@ -259,6 +280,20 @@ internal sealed class ProcessPythonExecutor(TimeProvider time) : IPythonExecutor
         environment["PSR_WORK_DIR"] = work;
         environment["PSR_SCRIPT"] = scriptPath;
         environment["PSR_MEMORY_LIMIT_MB"] = request.MemoryLimitMb.ToString(CultureInfo.InvariantCulture);
+        if (cgroup is not null)
+        {
+            // The SDK joins it before importing the script; if it cannot, it falls back like a host without cgroups.
+            environment["PSR_CGROUP"] = cgroup.Path;
+            environment["PSR_FALLBACK_THREADS"] = fallbackThreads.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (threads is { } count)
+        {
+            foreach (var name in ThreadVariables)
+            {
+                environment[name] = count.ToString(CultureInfo.InvariantCulture);
+            }
+        }
         foreach (var (name, value) in request.Secrets)
         {
             environment[$"PSR_SECRET_{name}"] = value;

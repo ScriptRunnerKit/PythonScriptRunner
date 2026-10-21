@@ -87,6 +87,30 @@ public sealed class IsolationTests(PythonFixture fixture)
     }
 
     [Fact]
+    public async Task Spec001_AC29_NumericLibraries_GetOneThreadWhenTheLimitIsRlimitAs_OrTheConfiguredCount()
+    {
+        const string script = """
+            import os
+            from psrunner import stage
+
+            @stage
+            def run(inputs, ctx):
+                return {"threads": os.environ.get("OPENBLAS_NUM_THREADS", "") + "/" + os.environ.get("OMP_NUM_THREADS", "")}
+            """;
+        await using var standard = RunnerHost.Create(fixture, b => b.AddStage("threads", s => s.Script(script).Output("threads", FieldType.String)));
+        await using var configured = RunnerHost.Create(
+            fixture, b => b.AddStage("threads", s => s.Script(script).Output("threads", FieldType.String)), o => o.ThreadsPerProcess = 4);
+
+        await using var byDefault = await standard.Runner.RunStageAsync("threads", null, cancellationToken: TestContext.Current.CancellationToken);
+        await using var explicitly = await configured.Runner.RunStageAsync("threads", null, cancellationToken: TestContext.Current.CancellationToken);
+
+        // The CI and developer machines have no delegable cgroup: Linux falls back to RLIMIT_AS (one thread each); Windows
+        // limits committed memory with a Job Object and keeps the libraries' own default.
+        byDefault.GetOutput<string>("threads").ShouldBe(OperatingSystem.IsLinux() ? "1/1" : "/");
+        explicitly.GetOutput<string>("threads").ShouldBe("4/4");
+    }
+
+    [Fact]
     public async Task Spec001_AC10_Secrets_ReachTheScriptButNotLogsOrInputs()
     {
         // Arrange

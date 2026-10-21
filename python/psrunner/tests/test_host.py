@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from conftest import RunHost
 
@@ -265,6 +267,87 @@ def test_spec002_ac10_memory_limit(run_host: RunHost) -> None:
     )
 
     assert run.error["kind"] == "MemoryLimitExceeded"
+
+
+def test_spec001_ac30_joins_the_cgroup_of_the_attempt_instead_of_limiting_itself(
+    run_host: RunHost, tmp_path: Path
+) -> None:
+    # A stand-in for the cgroup the runner created: the real memory.max lives in the kernel.
+    cgroup = tmp_path / "psr-runs" / "tentativa"
+    cgroup.mkdir(parents=True)
+    (cgroup / "cgroup.procs").write_text("", encoding="ascii")
+    script = """
+        import os
+        from psrunner import stage
+
+        @stage
+        def run(inputs, ctx):
+            data = bytearray(256 * 1024 * 1024)
+            return {"pid": os.getpid(), "threads": os.environ.get("OPENBLAS_NUM_THREADS", "")}
+    """
+
+    run = run_host(
+        script,
+        output_fields=[{"name": "pid", "type": "integer"}, {"name": "threads", "type": "string"}],
+        memory_limit_mb=128,
+        extra_env={"PSR_CGROUP": str(cgroup), "PSR_FALLBACK_THREADS": "1"},
+    )
+
+    assert (cgroup / "cgroup.procs").read_text(encoding="ascii") == str(run.outputs["pid"])
+    assert run.outputs["threads"] == "", "with a cgroup the numeric libraries keep their threads"
+
+
+def test_spec001_ac29_without_the_cgroup_limits_the_threads_and_keeps_the_memory_limit(
+    run_host: RunHost, tmp_path: Path
+) -> None:
+    script = """
+        import os
+        from psrunner import stage
+
+        @stage
+        def run(inputs, ctx):
+            names = [
+                "OMP_NUM_THREADS",
+                "OPENBLAS_NUM_THREADS",
+                "MKL_NUM_THREADS",
+                "NUMEXPR_NUM_THREADS",
+            ]
+            threads = ",".join(os.environ.get(name, "") for name in names)
+            data = bytearray(1024 * 1024 * 1024)
+            return {"threads": threads, "tamanho": len(data)}
+    """
+
+    run = run_host(
+        script,
+        output_fields=[
+            {"name": "threads", "type": "string"},
+            {"name": "tamanho", "type": "integer"},
+        ],
+        memory_limit_mb=128,
+        extra_env={"PSR_CGROUP": str(tmp_path / "nao-existe"), "PSR_FALLBACK_THREADS": "3"},
+    )
+
+    assert run.error["kind"] == "MemoryLimitExceeded"
+    assert "could not join the cgroup" in run.stderr
+
+
+def test_spec001_ac29_fallback_threads_reach_the_script(run_host: RunHost, tmp_path: Path) -> None:
+    script = """
+        import os
+        from psrunner import stage
+
+        @stage
+        def run(inputs, ctx):
+            return {"threads": os.environ.get("OPENBLAS_NUM_THREADS", "")}
+    """
+
+    run = run_host(
+        script,
+        output_fields=[{"name": "threads", "type": "string"}],
+        extra_env={"PSR_CGROUP": str(tmp_path / "nao-existe"), "PSR_FALLBACK_THREADS": "3"},
+    )
+
+    assert run.outputs["threads"] == "3"
 
 
 def test_spec002_ac11_protocol_mismatch(run_host: RunHost) -> None:

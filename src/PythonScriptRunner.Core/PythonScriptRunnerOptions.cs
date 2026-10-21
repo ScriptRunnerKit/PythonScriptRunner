@@ -36,6 +36,13 @@ public sealed class PythonScriptRunnerOptions
     /// <summary>Maximum number of Python processes running at the same time. Default: processor count.</summary>
     public int MaxConcurrentProcesses { get; set; } = Environment.ProcessorCount;
 
+    /// <summary>
+    /// Threads of the numeric libraries (OpenMP, OpenBLAS, MKL, numexpr) in each Python process. Default: <c>null</c> —
+    /// 1 on Linux when the memory limit falls back to <c>RLIMIT_AS</c> (no delegable cgroup v2, as in a standard container:
+    /// OpenBLAS reserves memory per thread), no limit otherwise. A value applies to every process (spec 001, D-180).
+    /// </summary>
+    public int? ThreadsPerProcess { get; set; }
+
     /// <summary>Package index (pip <c>--index-url</c>). Default: PyPI.</summary>
     public string? PackageIndexUrl { get; set; }
 

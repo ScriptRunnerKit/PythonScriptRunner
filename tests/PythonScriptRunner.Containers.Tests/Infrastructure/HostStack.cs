@@ -63,20 +63,31 @@ public sealed class HostStack : IAsyncLifetime
         return result.Stdout.Trim();
     }
 
-    /// <summary>A host container (not started) with migrations on, waiting until <c>/health/ready</c> answers 200.</summary>
-    public IContainer Host(string image, string database, IReadOnlyDictionary<string, string>? environment = null)
+    /// <summary>
+    /// A host container (not started) with migrations on, waiting until <c>/health/ready</c> answers 200;
+    /// <paramref name="privileged"/> runs it privileged and as root, so it owns a writable <c>/sys/fs/cgroup</c>: a
+    /// delegable cgroup v2 (D-180), like a systemd service with <c>Delegate=yes</c>.
+    /// </summary>
+    public IContainer Host(string image, string database, IReadOnlyDictionary<string, string>? environment = null, bool privileged = false)
     {
         var builder = new ContainerBuilder(image)
             .WithNetwork(_network)
+            .WithPrivileged(privileged)
             .WithEnvironment("ConnectionStrings__psr", $"Host=pg;Database={database};Username=psr;Password=psr")
             .WithEnvironment("ConnectionStrings__rabbitmq", "amqp://psr:psr@rabbit:5672/")
             .WithEnvironment("PSR_AUTO_MIGRATE", "true")
             .WithPortBinding(HttpPort, assignRandomHostPort: true)
             .WithCreateParameterModifier(parameters =>
             {
-                // Testcontainers fills HostConfig (port bindings, network) before the modifiers run.
+                // Testcontainers fills HostConfig (port bindings, network) before the modifiers run. The volumes run
+                // Python (interpreters, venvs), so the tmpfs needs exec (Docker mounts tmpfs noexec by default).
                 parameters.HostConfig!.ReadonlyRootfs = true;
-                parameters.HostConfig.Tmpfs = Volumes.ToDictionary(v => v, _ => "uid=10001,gid=10001");
+                if (privileged)
+                {
+                    parameters.User = "0:0";
+                }
+
+                parameters.HostConfig.Tmpfs = Volumes.ToDictionary(v => v, _ => "uid=10001,gid=10001,exec");
             })
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(HttpPort).ForPath("/health/ready")));
         foreach (var (name, value) in environment ?? new Dictionary<string, string>())
