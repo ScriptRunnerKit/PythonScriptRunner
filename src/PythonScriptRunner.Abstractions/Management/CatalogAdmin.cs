@@ -311,7 +311,12 @@ public interface ICatalogAdmin
 /// <param name="PageNumber">1-based page number.</param>
 /// <param name="PageSize">Items per page (1-100).</param>
 /// <param name="Status">Only items that have a version with this status.</param>
-public sealed record CatalogQuery(string? Search = null, int PageNumber = 1, int PageSize = 25, VersionStatus? Status = null);
+/// <param name="UsedByPipeline">
+/// Stages only: the stages used by the latest published version of this pipeline, in step order; a pipeline that does not
+/// exist or has no published version gives an empty page. <see cref="ICatalogAdmin.ListPipelinesAsync"/> rejects it.
+/// </param>
+public sealed record CatalogQuery(
+    string? Search = null, int PageNumber = 1, int PageSize = 25, VersionStatus? Status = null, string? UsedByPipeline = null);
 
 /// <summary>A new stage or pipeline.</summary>
 /// <param name="Key">Slug (immutable).</param>

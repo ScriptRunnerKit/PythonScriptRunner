@@ -96,6 +96,35 @@ public sealed class CatalogApiTests(PostgresFixture postgres, BrokerFixture brok
     }
 
     [Fact]
+    public async Task Spec007_AC26_StagesOfAPipeline_AreThoseOfItsLatestPublishedVersion_InStepOrder()
+    {
+        await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python);
+        var host = await env.StartHostAsync(s => s.Worker = false);
+        await env.ImportFixtureAsync(host, "calculo-progressao");
+        await using var app = await DashboardApp.StartAsync(env);
+        await app.PublishStageAsync("eco", Scripts.Echo, [Scripts.Text("texto")], [Scripts.Text("texto")]);
+        var draft = await app.Admin.CreatePipelineDraftFromAsync("calculo-progressao", 1, PsrEnvironment.Author, Ct);
+        var withEco = draft.Data with
+        {
+            Steps = [.. draft.Data.Steps, new PipelineStepDefinition("eco", "eco", 1) { Bindings = [new InputBinding("texto", new ConstantSource("x"))] }],
+        };
+        await app.Admin.SavePipelineDraftAsync("calculo-progressao", draft.Version, withEco, draft.RowVersion, PsrEnvironment.Author, Ct);
+        var onlyDraft = await app.Admin.CreatePipelineAsync(new NewCatalogItem("so-rascunho", "Só rascunho"), PsrEnvironment.Author, Ct);
+        await app.Admin.SavePipelineDraftAsync("so-rascunho", onlyDraft.Version, withEco, onlyDraft.RowVersion, PsrEnvironment.Author, Ct);
+        using var reader = await app.LoginAsync("leitor");
+
+        async Task<string[]> KeysAsync(string query) =>
+            (await (await reader.GetAsync($"/psr/api/stages?{query}", Ct)).JsonAsync())["items"]!.AsArray()
+                .Select(s => s!["key"]!.GetValue<string>()).ToArray();
+
+        (await KeysAsync("pipelineKey=calculo-progressao")).ShouldBe(["progressao-termos", "polinomio-avaliar", "estatisticas", "montar-tabela"]);
+        (await KeysAsync("pipelineKey=calculo-progressao&search=poli")).ShouldBe(["polinomio-avaliar"]);
+        (await KeysAsync("pipelineKey=so-rascunho")).ShouldBeEmpty();
+        (await KeysAsync("pipelineKey=nao-existe")).ShouldBeEmpty();
+        (await KeysAsync(string.Empty)).ShouldContain("eco");
+    }
+
+    [Fact]
     public async Task FieldTypes_DescribeTheTwelveTypesAndTheCompatibility()
     {
         await using var env = await PsrEnvironment.CreateAsync(postgres, broker, python);
