@@ -39,6 +39,7 @@ RUN groupadd --gid 10001 psr \
 COPY --from=psrunner /wheel/ /opt/psr/
 COPY --chmod=755 hosts/docker/entrypoint.sh /opt/psr/entrypoint.sh
 ENV HOME=/var/lib/psr \
+    TMPDIR=/tmp/psr/tmp \
     ASPNETCORE_HTTP_PORTS=8080 \
     UV_PYTHON_INSTALL_DIR=/var/lib/psr/python \
     UV_CACHE_DIR=/var/lib/psr/envs/.uv-cache \
