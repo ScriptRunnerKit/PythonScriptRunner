@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/messages/start-pipeline-run.v1.json",
+  "$id": "https://raw.githubusercontent.com/ScriptRunnerKit/PythonScriptRunner/main/schemas/messages/start-pipeline-run.v1.json",
   "title": "PythonScriptRunner StartPipelineRun command (psr.start-pipeline-run.v1)",
   "description": "Publish to the exchange psr.public with the routing key pipeline.start (AMQP type psr.start-pipeline-run.v1, content type application/json). The run is announced with run.queued, or refused with run.rejected; both carry the correlationId.",
   "type": "object",

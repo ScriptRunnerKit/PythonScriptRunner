@@ -17,8 +17,10 @@ from psrunner._execution import call_stage, classify_exception
 from psrunner.context import Context
 from psrunner.convert import inputs_to_python, outputs_to_wire
 from psrunner.fields import specs_from_dicts
-from psrunner.limits import apply_memory_limit
+from psrunner.limits import apply_limits
 from psrunner.protocol import (
+    ENV_CGROUP,
+    ENV_FALLBACK_THREADS,
     ENV_INPUT,
     ENV_MEMORY_LIMIT_MB,
     ENV_OUTPUT,
@@ -66,7 +68,11 @@ def _run() -> dict[str, Any]:
             f"this psrunner speaks {PROTOCOL_VERSION}."
         )
 
-    apply_memory_limit(int(os.environ.get(ENV_MEMORY_LIMIT_MB, "0") or 0))
+    apply_limits(
+        int(os.environ.get(ENV_MEMORY_LIMIT_MB, "0") or 0),
+        os.environ.get(ENV_CGROUP, ""),
+        int(os.environ.get(ENV_FALLBACK_THREADS, "0") or 0),
+    )
     logger = _configure_logging()
 
     try:

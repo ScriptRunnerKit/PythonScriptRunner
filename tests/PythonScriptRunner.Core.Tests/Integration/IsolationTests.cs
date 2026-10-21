@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using PythonScriptRunner.Core.Execution;
 using PythonScriptRunner.Core.Tests.Infrastructure;
 
 namespace PythonScriptRunner.Core.Tests.Integration;
@@ -87,6 +88,30 @@ public sealed class IsolationTests(PythonFixture fixture)
     }
 
     [Fact]
+    public async Task Spec001_AC29_NumericLibraries_GetOneThreadWhenTheLimitIsRlimitAs_OrTheConfiguredCount()
+    {
+        const string script = """
+            import os
+            from psrunner import stage
+
+            @stage
+            def run(inputs, ctx):
+                return {"threads": os.environ.get("OPENBLAS_NUM_THREADS", "") + "/" + os.environ.get("OMP_NUM_THREADS", "")}
+            """;
+        await using var standard = RunnerHost.Create(fixture, b => b.AddStage("threads", s => s.Script(script).Output("threads", FieldType.String)));
+        await using var configured = RunnerHost.Create(
+            fixture, b => b.AddStage("threads", s => s.Script(script).Output("threads", FieldType.String)), o => o.ThreadsPerProcess = 4);
+
+        await using var byDefault = await standard.Runner.RunStageAsync("threads", null, cancellationToken: TestContext.Current.CancellationToken);
+        await using var explicitly = await configured.Runner.RunStageAsync("threads", null, cancellationToken: TestContext.Current.CancellationToken);
+
+        // The CI and developer machines have no delegable cgroup: Linux falls back to RLIMIT_AS (one thread each); Windows
+        // limits committed memory with a Job Object and keeps the libraries' own default.
+        byDefault.GetOutput<string>("threads").ShouldBe(OperatingSystem.IsLinux() ? "1/1" : "/");
+        explicitly.GetOutput<string>("threads").ShouldBe("4/4");
+    }
+
+    [Fact]
     public async Task Spec001_AC10_Secrets_ReachTheScriptButNotLogsOrInputs()
     {
         // Arrange
@@ -142,8 +167,9 @@ public sealed class IsolationTests(PythonFixture fixture)
 
         var names = result.GetOutput<JsonArray>("nomes").Select(n => n!.GetValue<string>().ToUpperInvariant()).ToList();
         names.ShouldNotContain("PSR_TEST_HOST_ONLY");
-        // LC_CTYPE is set by the interpreter itself on Linux (PEP 538 locale coercion), not inherited from the host.
-        string[] allowed = ["PATH", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME", "LC_CTYPE"];
+        // LC_CTYPE is set by the interpreter itself on Linux (PEP 538 locale coercion), not inherited from the host. The
+        // thread variables come from the runner when the memory limit falls back to RLIMIT_AS (Linux without cgroup; D-180).
+        string[] allowed = ["PATH", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "HOME", "LC_CTYPE", .. ProcessPythonExecutor.ThreadVariables];
         names.Where(n => !n.StartsWith("PSR_", StringComparison.Ordinal) && !allowed.Contains(n)).ShouldBeEmpty();
     }
 

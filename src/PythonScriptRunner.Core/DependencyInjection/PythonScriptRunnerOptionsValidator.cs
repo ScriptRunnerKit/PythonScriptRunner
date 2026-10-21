@@ -50,6 +50,11 @@ internal sealed class PythonScriptRunnerOptionsValidator : IValidateOptions<Pyth
             errors.Add("MaxConcurrentProcesses must be at least 1.");
         }
 
+        if (options.ThreadsPerProcess is < 1)
+        {
+            errors.Add("ThreadsPerProcess must be at least 1 (or null).");
+        }
+
         if (string.IsNullOrWhiteSpace(options.PsrunnerRequirement))
         {
             errors.Add("PsrunnerRequirement is required.");

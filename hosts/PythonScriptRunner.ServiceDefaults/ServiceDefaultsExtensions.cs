@@ -7,6 +7,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using Serilog.Events;
 using Serilog.Formatting.Compact;
 
 namespace Microsoft.Extensions.Hosting;
@@ -31,7 +32,10 @@ public static class ServiceDefaultsExtensions
         where TBuilder : IHostApplicationBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
+        // ASP.NET Core logs every request at Information; the traces already cover them (D-187). The configuration
+        // (Serilog:MinimumLevel:Override:Microsoft.AspNetCore) can bring them back.
         builder.Services.AddSerilog((services, logger) => logger
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
             .ReadFrom.Configuration(builder.Configuration)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("service", serviceName)

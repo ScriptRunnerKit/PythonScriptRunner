@@ -11,13 +11,22 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <PropertyGroup Label="Version">
+    <!-- Same version for every package, from the tag vX.Y.Z (MinVer; D-179). python/vX.Y.Z tags belong to psrunner. -->
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup Label="Package">
-    <VersionPrefix>0.1.0</VersionPrefix>
-    <Authors>net0well</Authors>
-    <Copyright>Copyright (c) 2026 net0well</Copyright>
+    <Authors>ScriptRunnerKit</Authors>
+    <Copyright>Copyright (c) 2026 ScriptRunnerKit contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/net0well/PythonScriptRunner</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/net0well/PythonScriptRunner</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/ScriptRunnerKit/PythonScriptRunner</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ScriptRunnerKit/PythonScriptRunner</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>

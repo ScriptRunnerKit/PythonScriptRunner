@@ -9,7 +9,7 @@ description = "Python SDK for PythonScriptRunner stages: typed inputs and output
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{ name = "net0well" }]
+authors = [{ name = "ScriptRunnerKit contributors" }]
 keywords = ["pythonscriptrunner", "dotnet", "pipeline", "stage"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -29,7 +29,7 @@ dependencies = []
 pandas = ["pandas>=2.0"]
 
 [project.urls]
-Repository = "https://github.com/net0well/PythonScriptRunner"
+Repository = "https://github.com/ScriptRunnerKit/PythonScriptRunner"
 
 [project.scripts]
 psrunner = "psrunner.cli:main"

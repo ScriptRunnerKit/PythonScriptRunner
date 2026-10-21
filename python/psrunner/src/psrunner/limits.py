@@ -7,11 +7,54 @@ by the .NET runner after ``Process.Start`` can miss that child.
 
 from __future__ import annotations
 
+import os
 import sys
+from pathlib import Path
 from typing import Any
 
 _MB = 1024 * 1024
 _keep_alive: list[Any] = []
+
+# Thread pools of the numeric libraries (OpenMP, OpenBLAS, MKL, numexpr, Accelerate).
+THREAD_VARIABLES = (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
+
+
+def apply_limits(limit_mb: int, cgroup: str, fallback_threads: int) -> str:
+    """Applies the memory limit of the attempt; returns how: ``cgroup``, ``process`` or ``none``.
+
+    On Linux the runner may create a cgroup v2 with ``memory.max`` for the attempt (spec 001,
+    D-180): joining it limits the memory really used. Without it, the limit falls back to
+    ``RLIMIT_AS``, which counts reserved address space, so the numeric libraries are limited to
+    ``fallback_threads`` threads: OpenBLAS reserves memory per thread and, on a machine with many
+    cores, ``import numpy`` alone would exceed the limit. Both happen before the script is imported.
+    """
+    if cgroup and join_cgroup(cgroup):
+        return "cgroup"
+    if fallback_threads > 0:
+        limit_threads(fallback_threads)
+    return "process" if apply_memory_limit(limit_mb) else "none"
+
+
+def join_cgroup(path: str) -> bool:
+    """Moves this process into the cgroup at ``path``. Returns ``True`` when it joined."""
+    try:
+        Path(path, "cgroup.procs").write_text(str(os.getpid()), encoding="ascii")
+    except OSError as exc:
+        print(f"psrunner: could not join the cgroup {path}: {exc}", file=sys.stderr)
+        return False
+    return True
+
+
+def limit_threads(count: int) -> None:
+    """Limits the thread pools of the numeric libraries, keeping values set by the runner."""
+    for name in THREAD_VARIABLES:
+        os.environ.setdefault(name, str(count))
 
 
 def apply_memory_limit(limit_mb: int) -> bool:

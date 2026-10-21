@@ -39,6 +39,7 @@ public static class PythonScriptRunnerServiceCollectionExtensions
         services.TryAddSingleton<ISecretProvider, ConfigurationSecretProvider>();
         services.TryAddSingleton<IRunRecorder, NullRunRecorder>();
         services.TryAddSingleton<IEnvironmentManager, UvEnvironmentManager>();
+        services.TryAddSingleton<CgroupMemory>();
         services.TryAddSingleton<IPythonExecutor, ProcessPythonExecutor>();
         services.TryAddSingleton<PsrMetrics>();
         services.TryAddSingleton<WorkspaceJanitor>();

@@ -76,4 +76,10 @@ internal static partial class Log
 
     [LoggerMessage(10, LogLevel.Error, "Could not record the failure of run {RunId}")]
     public static partial void RecordingFailed(ILogger logger, RunId runId, Exception exception);
+
+    [LoggerMessage(11, LogLevel.Information, "Memory limits of Python processes use cgroup v2 under {Path}")]
+    public static partial void CgroupMemoryLimits(ILogger logger, string path);
+
+    [LoggerMessage(12, LogLevel.Information, "Memory limits of Python processes use RLIMIT_AS ({Reason}); numeric libraries get {Threads} thread(s) per process")]
+    public static partial void ProcessMemoryLimits(ILogger logger, string reason, int threads);
 }

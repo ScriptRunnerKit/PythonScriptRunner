@@ -7,8 +7,10 @@ public sealed class PythonScriptRunnerOptions
     public string WorkRoot { get; set; } = Path.Combine(Path.GetTempPath(), "psr");
 
     /// <summary>Folder where Python environments (venvs) and lock files are cached.</summary>
+    /// <remarks>The default only names the folder: it is created when the first environment needs it (a container with a
+    /// read-only file system sets another root and must not fail on the default).</remarks>
     public string EnvironmentCacheRoot { get; set; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create), "psr");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify), "psr");
 
     /// <summary>Path or name of the <c>uv</c> executable. Default: <c>uv</c> (searched in PATH).</summary>
     public string UvPath { get; set; } = "uv";
@@ -33,6 +35,13 @@ public sealed class PythonScriptRunnerOptions
 
     /// <summary>Maximum number of Python processes running at the same time. Default: processor count.</summary>
     public int MaxConcurrentProcesses { get; set; } = Environment.ProcessorCount;
+
+    /// <summary>
+    /// Threads of the numeric libraries (OpenMP, OpenBLAS, MKL, numexpr) in each Python process. Default: <c>null</c> —
+    /// 1 on Linux when the memory limit falls back to <c>RLIMIT_AS</c> (no delegable cgroup v2, as in a standard container:
+    /// OpenBLAS reserves memory per thread), no limit otherwise. A value applies to every process (spec 001, D-180).
+    /// </summary>
+    public int? ThreadsPerProcess { get; set; }
 
     /// <summary>Package index (pip <c>--index-url</c>). Default: PyPI.</summary>
     public string? PackageIndexUrl { get; set; }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/pipeline.v1.json",
+  "$id": "https://raw.githubusercontent.com/ScriptRunnerKit/PythonScriptRunner/main/schemas/pipeline.v1.json",
   "title": "PythonScriptRunner pipeline manifest (v1)",
   "description": "Declares one pipeline: inputs, ordered steps (stage@version + bindings) and declared outputs.",
   "type": "object",

@@ -51,6 +51,7 @@ def run_host(tmp_path: Path) -> RunHost:
         secrets: dict[str, str] | None = None,
         protocol: str = "1",
         memory_limit_mb: int = 0,
+        extra_env: dict[str, str] | None = None,
     ) -> HostRun:
         work = tmp_path / "work"
         for sub in ("in", "out", "tmp"):
@@ -110,6 +111,7 @@ def run_host(tmp_path: Path) -> RunHost:
         )
         for name, value in (secrets or {}).items():
             env[f"PSR_SECRET_{name}"] = value
+        env.update(extra_env or {})
 
         completed = subprocess.run(
             [sys.executable, "-I", "-X", "utf8", "-m", "psrunner.host"],

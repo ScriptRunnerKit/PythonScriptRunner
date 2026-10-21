@@ -42,7 +42,8 @@ internal sealed class UvEnvironmentManager(
     public async Task<ScriptSyntaxError?> CheckSyntaxAsync(string? pythonVersion, string script, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(script);
-        var folder = Path.Combine(Path.GetTempPath(), "psr-syntax", Guid.NewGuid().ToString("N"));
+        // Inside WorkRoot: a container with a read-only root file system only writes its volumes.
+        var folder = Path.Combine(options.Value.WorkRoot, "syntax", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         try
         {
