@@ -29,8 +29,54 @@ cd python/psrunner && uv sync && uv run pytest
 cd panel && npm ci && npm test
 ```
 
-The [README](README.md#development) explains each test project, the environment variables the tests read, and how to run
-the local environment with .NET Aspire.
+To run everything locally with .NET Aspire, see [Hosting](guides/en/hosting.md#local-environment-net-aspire).
+
+### Test projects
+
+| Project | Needs | Notes |
+|---------|-------|-------|
+| `PythonScriptRunner.Core.Tests` | uv | Unit tests and integration with real Python processes. |
+| `PythonScriptRunner.EntityFrameworkCore.Tests`, `.RabbitMQ.Tests`, `.Worker.Tests`, `.Dashboard.Tests` | Docker | PostgreSQL 16, RabbitMQ 3.13 and Mailpit with Testcontainers. |
+| `PythonScriptRunner.Containers.Tests` | Docker | Builds both host images and runs them as in production (read-only, tmpfs volumes). |
+| `PythonScriptRunner.AppHost.Tests` | Docker, Node.js and uv | Starts the Aspire AppHost and runs the sample pipelines. |
+| `PythonScriptRunner.Panel.E2E.Tests` | Docker and the embedded UI | Drives Chromium with Playwright against a real dashboard, worker, PostgreSQL and RabbitMQ. |
+
+Details of each project:
+- **Containers.Tests:**
+  - The compose test needs the Aspire CLI (`PSR_ASPIRE_CLI` points to it if it is not on the PATH).
+  - To test images you built yourself, set `PSR_TEST_WORKER_IMAGE` and `PSR_TEST_DASHBOARD_IMAGE`.
+  - When a test fails, the logs of its containers are saved to `TestResults/container-logs/<test>/` next to the test
+    assembly, and the end of the worker and dashboard logs goes to the test output.
+- **Panel.E2E.Tests:**
+  - Build it with `-p:PsrBuildPanel=true` to embed the UI.
+  - Run it on its own: containers starting or stopping in other test projects change the network interfaces, and Chromium
+    then aborts requests with `ERR_NETWORK_CHANGED`.
+  - `PSR_E2E_HEADED=1` shows the browser.
+  - A failed test saves its Playwright trace to `TestResults/traces` (`npx playwright show-trace <file>.zip`).
+- **Dashboard performance test:** it uses about 200,000 runs; `PSR_PERF_RUNS_PER_DAY=50000` runs the full average
+  volume (90 days).
+- **Dashboard OpenAPI document:** it is compared with
+  `tests/PythonScriptRunner.Dashboard.Tests/Snapshots/openapi-v1.verified.json`; after you review an intended change,
+  `PSR_ACCEPT_SNAPSHOTS=1` updates the snapshot.
+
+### The dashboard UI
+
+The UI lives in `panel/` (Node.js 24). Debug builds of `PythonScriptRunner.Dashboard` embed a placeholder page; in Release
+(or with `-p:PsrBuildPanel=true`) MSBuild runs `npm ci` and `npm run build` and embeds `panel/dist`.
+
+```bash
+cd panel
+npm run dev        # Vite at http://localhost:5173/; /api and /hubs go to the DashboardHost at PSR_DASHBOARD_URL (default http://localhost:5080)
+npm test           # Vitest
+npm run lint       # ESLint and Prettier
+npm run build      # type check, build and the budget of the initial bundle (500 KB gzip)
+npm run api        # regenerates src/api/schema.d.ts from the OpenAPI snapshot
+```
+
+### Documentation
+
+The guides live in `guides/en` and `guides/pt-br`, with the same pages in both languages. A change in behavior updates
+both, and the README when the overview changes.
 
 ## What the CI checks
 
