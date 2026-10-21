@@ -52,9 +52,10 @@ internal static class StageEndpoints
     }
 
     private static async Task<ApiPage<StageSummary>> ListAsync(
-        string? search, VersionStatus? status, int? page, int? pageSize, ICatalogAdmin admin, CancellationToken cancellationToken) =>
+        string? search, VersionStatus? status, string? pipelineKey, int? page, int? pageSize, ICatalogAdmin admin, CancellationToken cancellationToken) =>
         ApiPage<StageSummary>.From(await admin.ListStagesAsync(
-            new CatalogQuery(search, page ?? 1, Math.Clamp(pageSize ?? 25, 1, 100), status), cancellationToken).ConfigureAwait(false));
+            new CatalogQuery(search, page ?? 1, Math.Clamp(pageSize ?? 25, 1, 100), status, string.IsNullOrWhiteSpace(pipelineKey) ? null : pipelineKey.Trim()),
+            cancellationToken).ConfigureAwait(false));
 
     private static async Task<IResult> CreateAsync(NewCatalogItem stage, HttpContext http, ICatalogAdmin admin, CancellationToken cancellationToken)
     {

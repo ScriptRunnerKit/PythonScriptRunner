@@ -53,8 +53,20 @@ internal sealed partial class EfCatalogAdmin(
                 stages = stages.Where(s => s.Versions.Any(v => v.Status == status));
             }
 
+            var ordered = stages.OrderBy(s => s.Key);
+            if (query.UsedByPipeline is { } pipelineKey)
+            {
+                // The steps of the latest published version of the pipeline (D-164, D-165); a stage used by two steps shows
+                // once, at its first step.
+                var steps = db.PipelineSteps.Where(step => db.PipelineVersions.Any(v =>
+                    v.Id == step.PipelineVersionId && v.Status == VersionStatus.Published
+                    && v.Pipeline.Key == pipelineKey && v.Version == v.Pipeline.LatestPublishedVersion));
+                stages = stages.Where(s => steps.Any(step => step.StageVersion.StageId == s.Id));
+                ordered = stages.OrderBy(s => steps.Where(step => step.StageVersion.StageId == s.Id).Min(step => step.Order)).ThenBy(s => s.Key);
+            }
+
             var total = await stages.CountAsync(cancellationToken).ConfigureAwait(false);
-            var items = await stages.OrderBy(s => s.Key)
+            var items = await ordered
                 .Skip((pageNumber - 1) * pageSize).Take(pageSize)
                 .Select(s => new StageSummary(
                     s.Key, s.Name, s.Description, s.LatestPublishedVersion,

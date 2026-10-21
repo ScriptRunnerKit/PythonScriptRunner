@@ -202,6 +202,14 @@ const exportUrl = (v: number) => `${apiBase}/pipelines/${encodeURIComponent(key.
           {{ t('pipelines.run.open') }}
         </v-btn>
         <v-btn
+          variant="text"
+          prepend-icon="mdi-language-python"
+          :to="{ name: 'stages', query: { trilha: pipeline.key } }"
+          data-testid="pipeline-stages"
+        >
+          {{ t('pipelines.stagesLink') }}
+        </v-btn>
+        <v-btn
           v-if="session.hasRole('Author')"
           variant="tonal"
           prepend-icon="mdi-pencil"

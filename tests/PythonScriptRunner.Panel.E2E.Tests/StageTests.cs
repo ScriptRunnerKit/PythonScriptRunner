@@ -141,6 +141,37 @@ public sealed class StageTests(PostgresFixture postgres, BrokerFixture broker, P
         await Expect(row.GetByTestId("used-by")).ToHaveTextAsync("usada em 1 trilha");
     }
 
+    [Fact]
+    public async Task Spec008_AC26_TrilhaFilter_ShowsTheStagesOfThePublishedVersionInStepOrder_AndSurvivesAReload()
+    {
+        await StartAsync(s => s.Worker = false);
+        await App.ImportFixtureAsync("calculo-progressao");
+        await App.ImportFixtureAsync("html-para-email");
+        await App.PublishStageAsync("eco", PanelScripts.Echo, [Scripts.Text("texto")], [Scripts.Text("texto")]);
+        var draft = await App.Host.Admin.CreatePipelineDraftFromAsync("calculo-progressao", 1, PsrEnvironment.Author, Ct);
+        await App.Host.Admin.SavePipelineDraftAsync("calculo-progressao", draft.Version, draft.Data with
+        {
+            Steps = [.. draft.Data.Steps, new PipelineStepDefinition("eco", "eco", 1) { Bindings = [new InputBinding("texto", new ConstantSource("x"))] }],
+        }, draft.RowVersion, PsrEnvironment.Author, Ct);
+        var page = await OpenAsync(PanelUsers.Reader);
+        await GoToAsync(page, "etapas");
+        var keys = page.GetByTestId("catalog-table").Locator("[data-key]");
+        await Expect(keys).ToHaveCountAsync(7);
+
+        await page.Locator(".v-main").ChooseAsync("Trilha", "Cálculo de progressão");
+
+        string[] calculo = ["progressao-termos", "polinomio-avaliar", "estatisticas", "montar-tabela"];
+        await Expect(keys).ToHaveTextAsync(calculo);
+        await Expect(page).ToHaveURLAsync(App.UrlOf("etapas?trilha=calculo-progressao"));
+        await page.ReloadAsync();
+        await Expect(keys).ToHaveTextAsync(calculo);
+
+        await GoToAsync(page, "trilhas/html-para-email");
+        await page.GetByTestId("pipeline-stages").ClickAsync();
+        await Expect(page).ToHaveURLAsync(App.UrlOf("etapas?trilha=html-para-email"));
+        await Expect(keys).ToHaveTextAsync(["html-para-pdf", "enviar-email"]);
+    }
+
     /// <summary>Adds a field (string, required) to the inputs or outputs builder and names it.</summary>
     private static async Task AddFieldAsync(IPage page, string kind, string name)
     {

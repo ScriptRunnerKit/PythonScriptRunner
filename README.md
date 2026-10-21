@@ -161,8 +161,8 @@ O host `hosts/PythonScriptRunner.WorkerHost` é um worker pronto, configurado po
 Com `PythonScriptRunner.Dashboard`, o painel é embutido na sua aplicação, no estilo do Hangfire: API interna, atualizações
 em tempo real (SignalR) e a interface Vue servida no prefixo escolhido. Sem `MapPythonScriptRunnerDashboard` não existe painel.
 
-A interface (em pt-BR, tema claro/escuro) cobre a visão geral, Etapas (editor Monaco com construtor de campos, testar
-pela fila e publicar), Trilhas (editor visual com *handles* tipados, ou lista editável, testar e publicar), execuções ao
+A interface (em pt-BR, tema claro/escuro) cobre a visão geral, Etapas (lista filtrável por trilha, editor Monaco com
+construtor de campos, testar pela fila e publicar), Trilhas (editor visual com *handles* tipados, ou lista editável, testar e publicar), execuções ao
 vivo (fluxo por status, logs, arquivos, linha do tempo, cancelar e reprocessar), agendamentos com prévia do cron,
 auditoria e administração. Ela vai dentro do pacote: não há nada para hospedar à parte.
 

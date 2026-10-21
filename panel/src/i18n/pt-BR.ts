@@ -46,6 +46,11 @@ export default {
     forbidden: { title: 'Sem permissão', text: 'Seu papel não permite abrir esta página.' },
   },
   notFound: { title: 'Página não encontrada', text: 'O endereço não existe no painel.' },
+  loadFailed: {
+    title: 'Não foi possível carregar esta tela',
+    text: 'A conexão oscilou ou o painel foi atualizado enquanto você navegava.',
+    reload: 'Recarregar',
+  },
   realtime: { unavailable: 'Atualização em tempo real indisponível; a tela continua atualizando a cada 5 segundos.' },
   common: {
     cancel: 'Cancelar',
@@ -199,6 +204,7 @@ export default {
     version: 'Versão',
     publishedAt: 'Publicada em',
     pipeline: 'Trilha',
+    pipelineUnpublished: 'Esta trilha ainda não tem versão publicada.',
     export: 'Exportar',
     archive: 'Arquivar',
     import: 'Importar zip',
@@ -268,6 +274,7 @@ export default {
     deleteText: 'Excluir a trilha {key}, as versões e os agendamentos? Não dá para desfazer.',
     recentRuns: 'Execuções recentes',
     allRuns: 'Ver todas as execuções',
+    stagesLink: 'Ver Etapas desta trilha',
     run: {
       open: 'Disparar',
       title: 'Disparar {name}',

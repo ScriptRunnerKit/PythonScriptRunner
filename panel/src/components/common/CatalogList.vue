@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api, apiFetch, ensureOk, unwrap, type Schemas } from '@/api/client'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { useApiAction, useErrorText } from '@/composables/useApiAction'
@@ -11,9 +11,10 @@ import { formatDateTime } from '@/utils/format'
 
 type Summary = Schemas['StageSummary'] | Schemas['PipelineSummary']
 
-/** Lista de Etapas ou Trilhas (spec 008): busca, filtro por status, versão publicada, uso; Autor cria e importa. */
+/** Lista de Etapas ou Trilhas (spec 008): busca, filtro por status (e por trilha, nas Etapas), versão publicada, uso; Autor cria e importa. */
 const props = defineProps<{ kind: 'stages' | 'pipelines' }>()
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const session = useSession()
 const notify = useNotify()
@@ -30,6 +31,13 @@ const creating = ref(false)
 const createError = ref<string | null>(null)
 const draft = ref({ key: '', name: '', description: '' })
 const importing = ref(false)
+
+// Filtro "Trilha" das Etapas (D-164, D-165): só as Etapas da última versão publicada da trilha, na ordem dos passos.
+// Fica na URL (`?trilha=`) para o link poder ser compartilhado.
+const queryPipeline = () => (props.kind === 'stages' && typeof route.query.trilha === 'string' && route.query.trilha) || null
+const pipelineKey = ref<string | null>(queryPipeline())
+const pipelines = ref<Schemas['PipelineSummary'][]>([])
+const selectedPipeline = computed(() => pipelines.value.find((p) => p.key === pipelineKey.value) ?? null)
 
 const headers = [
   { title: t('catalog.key'), key: 'key', sortable: false },
@@ -49,7 +57,7 @@ async function load() {
   }
   const result = await run(() =>
     props.kind === 'stages'
-      ? unwrap(api.GET('/stages', { params: { query } }))
+      ? unwrap(api.GET('/stages', { params: { query: { ...query, pipelineKey: pipelineKey.value ?? undefined } } }))
       : unwrap(api.GET('/pipelines', { params: { query } })),
   )
   if (result) {
@@ -70,6 +78,41 @@ watch(search, () => {
   }, 300)
 })
 watch([status, page, pageSize], () => void load(), { immediate: true })
+watch(pipelineKey, (key) => {
+  void router.replace({ query: { ...route.query, trilha: key ?? undefined } })
+  if (page.value === 1) {
+    void load()
+  } else {
+    page.value = 1
+  }
+})
+watch(
+  () => route.query.trilha,
+  () => {
+    if (queryPipeline() !== pipelineKey.value) {
+      pipelineKey.value = queryPipeline()
+    }
+  },
+)
+
+async function loadPipelines() {
+  const all: Schemas['PipelineSummary'][] = []
+  for (let number = 1; ; number++) {
+    const result = await unwrap(api.GET('/pipelines', { params: { query: { page: number, pageSize: 100 } } }))
+    all.push(...result.items)
+    if (result.items.length === 0 || all.length >= result.total) {
+      break
+    }
+  }
+
+  pipelines.value = all
+}
+
+onMounted(() => {
+  if (props.kind === 'stages') {
+    void run(loadPipelines)
+  }
+})
 
 const detailRoute = (key: string) => ({ name: props.kind === 'stages' ? 'stage' : 'pipeline', params: { key } })
 
@@ -156,7 +199,27 @@ function usedBy(item: Summary) {
           hide-details
           style="max-width: 220px"
         />
+        <v-autocomplete
+          v-if="kind === 'stages'"
+          v-model="pipelineKey"
+          :items="pipelines.map((p) => ({ value: p.key, title: p.name }))"
+          :label="t('catalog.pipeline')"
+          clearable
+          hide-details
+          style="max-width: 320px"
+          data-testid="pipeline-filter"
+        />
       </v-card-text>
+      <v-alert
+        v-if="selectedPipeline && !selectedPipeline.latestPublishedVersion"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mx-4 mb-2"
+        data-testid="pipeline-unpublished"
+      >
+        {{ t('catalog.pipelineUnpublished') }}
+      </v-alert>
       <v-data-table-server
         v-model:page="page"
         v-model:items-per-page="pageSize"

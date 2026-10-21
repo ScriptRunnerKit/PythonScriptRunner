@@ -10,6 +10,11 @@ internal sealed partial class EfCatalogAdmin
     public async Task<Page<PipelineSummary>> ListPipelinesAsync(CatalogQuery query, CancellationToken cancellationToken = default)
     {
         var (pageNumber, pageSize) = Paging(query);
+        if (query.UsedByPipeline is not null)
+        {
+            throw new ArgumentException("UsedByPipeline filters stages only.", nameof(query));
+        }
+
         var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
