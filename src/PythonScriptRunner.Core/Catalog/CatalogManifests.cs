@@ -28,7 +28,7 @@ public static class CatalogManifests
     /// <summary>Suffix of pipeline manifests.</summary>
     public const string PipelineSuffix = ".pipeline.json";
 
-    private const string SchemaBase = "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/";
+    private const string SchemaBase = "https://raw.githubusercontent.com/ScriptRunnerKit/PythonScriptRunner/main/schemas/";
 
     private static readonly Lazy<JsonSchema> StageSchema = new(() => LoadSchema("stage.v1.json"), LazyThreadSafetyMode.ExecutionAndPublication);
     private static readonly Lazy<JsonSchema> PipelineSchema = new(() => LoadSchema("pipeline.v1.json"), LazyThreadSafetyMode.ExecutionAndPublication);

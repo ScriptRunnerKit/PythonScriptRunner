@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/stage.v1.json",
+  "$id": "https://raw.githubusercontent.com/ScriptRunnerKit/PythonScriptRunner/main/schemas/stage.v1.json",
   "title": "PythonScriptRunner stage manifest (v1)",
   "description": "Declares one Stage: typed inputs, exactly one Python script and typed outputs.",
   "type": "object",

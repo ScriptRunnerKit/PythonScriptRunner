@@ -29,6 +29,10 @@ RUN arch=$([ "$TARGETARCH" = "arm64" ] && echo arm64 || echo x64) \
       -p:MinVerVersionOverride="$VERSION"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+LABEL org.opencontainers.image.title="psr-worker" \
+      org.opencontainers.image.description="PythonScriptRunner worker: runs queued Python stages and cron schedules." \
+      org.opencontainers.image.source="https://github.com/ScriptRunnerKit/PythonScriptRunner" \
+      org.opencontainers.image.licenses="MIT"
 # Pré-aquecimento opcional: --build-arg PSR_PREINSTALL_PYTHON=3.12 instala o intérprete na imagem.
 ARG PSR_PREINSTALL_PYTHON=
 COPY --from=uv /uv /uvx /usr/local/bin/

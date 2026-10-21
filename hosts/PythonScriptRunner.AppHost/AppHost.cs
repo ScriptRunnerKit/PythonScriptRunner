@@ -58,12 +58,12 @@ for (var i = 0; i < users.Length; i++)
 postgres.PublishAsDockerComposeService((_, service) => service.Environment["POSTGRES_DB"] = "psr");
 worker.PublishAsDockerComposeService((_, service) =>
 {
-    service.Image = "ghcr.io/net0well/psr-worker:${PSR_VERSION:-latest}";
+    service.Image = "ghcr.io/scriptrunnerkit/psr-worker:${PSR_VERSION:-latest}";
     service.Restart = "unless-stopped";
 });
 dashboard.PublishAsDockerComposeService((_, service) =>
 {
-    service.Image = "ghcr.io/net0well/psr-dashboard:${PSR_VERSION:-latest}";
+    service.Image = "ghcr.io/scriptrunnerkit/psr-dashboard:${PSR_VERSION:-latest}";
     service.Restart = "unless-stopped";
     service.Ports = ["${PSR_DASHBOARD_PORT:-8080}:8080"];
 });

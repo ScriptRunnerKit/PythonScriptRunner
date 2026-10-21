@@ -31,7 +31,7 @@ def run(inputs, ctx):
 ```jsonc
 // stages/progressao-termos/stage.json
 {
-  "$schema": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/stage.v1.json",
+  "$schema": "https://raw.githubusercontent.com/ScriptRunnerKit/PythonScriptRunner/main/schemas/stage.v1.json",
   "key": "progressao-termos",
   "version": 1,
   "name": "Termos de progressão",

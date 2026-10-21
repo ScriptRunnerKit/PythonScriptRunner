@@ -1,6 +1,6 @@
 # psrunner
 
-Python SDK for [PythonScriptRunner](https://github.com/net0well/PythonScriptRunner) stages.
+Python SDK for [PythonScriptRunner](https://github.com/ScriptRunnerKit/PythonScriptRunner) stages.
 
 A stage is one Python script with typed inputs and outputs. The .NET runner validates the inputs,
 runs the script in an isolated process and validates the outputs. `psrunner` handles the protocol,

@@ -26,10 +26,10 @@ public sealed class ComposeTests(HostStack stack)
             "-o", output, "--non-interactive", "--nologo");
         published.ShouldBe(0, publishLog);
 
-        // The compose uses ghcr.io/net0well/psr-*:${PSR_VERSION}; the images under test take that name locally.
+        // The compose uses ghcr.io/scriptrunnerkit/psr-*:${PSR_VERSION}; the images under test take that name locally.
         foreach (var (image, name) in new[] { (stack.WorkerImage, "psr-worker"), (stack.DashboardImage, "psr-dashboard") })
         {
-            (await HostImages.DockerAsync(["tag", image, $"ghcr.io/net0well/{name}:{Version}"], Ct)).Code.ShouldBe(0);
+            (await HostImages.DockerAsync(["tag", image, $"ghcr.io/scriptrunnerkit/{name}:{Version}"], Ct)).Code.ShouldBe(0);
         }
 
         var port = FreePort();

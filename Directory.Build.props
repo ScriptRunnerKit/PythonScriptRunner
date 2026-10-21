@@ -22,11 +22,11 @@
   </ItemGroup>
 
   <PropertyGroup Label="Package">
-    <Authors>net0well</Authors>
-    <Copyright>Copyright (c) 2026 net0well</Copyright>
+    <Authors>ScriptRunnerKit</Authors>
+    <Copyright>Copyright (c) 2026 ScriptRunnerKit contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/net0well/PythonScriptRunner</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/net0well/PythonScriptRunner</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/ScriptRunnerKit/PythonScriptRunner</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ScriptRunnerKit/PythonScriptRunner</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/net0well/PythonScriptRunner/main/schemas/messages/run-event.v1.json",
+  "$id": "https://raw.githubusercontent.com/ScriptRunnerKit/PythonScriptRunner/main/schemas/messages/run-event.v1.json",
   "title": "PythonScriptRunner run event (psr.run-event.v1)",
   "description": "Published on the topic exchange psr.events with the routing key <type>.<pipeline key> or <type>.stage:<stage key> (AMQP type psr.run-event.v1). Fields are only added within v1; consumers must ignore unknown fields.",
   "type": "object",

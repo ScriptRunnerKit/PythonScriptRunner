@@ -39,6 +39,10 @@ RUN arch=$([ "$TARGETARCH" = "arm64" ] && echo arm64 || echo x64) \
       -p:MinVerVersionOverride="$VERSION" -p:PsrPanelPrebuilt=true
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+LABEL org.opencontainers.image.title="psr-dashboard" \
+      org.opencontainers.image.description="PythonScriptRunner dashboard: Vue panel, API and real-time updates." \
+      org.opencontainers.image.source="https://github.com/ScriptRunnerKit/PythonScriptRunner" \
+      org.opencontainers.image.licenses="MIT"
 COPY --from=uv /uv /uvx /usr/local/bin/
 RUN groupadd --gid 10001 psr \
  && useradd --uid 10001 --gid psr --home-dir /var/lib/psr --no-create-home --shell /usr/sbin/nologin psr \
