@@ -79,7 +79,16 @@ jobs:
       # Testcontainers (Docker); GitHub's Windows runners cannot run Linux containers, so Windows runs the Core tests only.
       - name: Test
         if: runner.os == 'Linux'
-        run: dotnet test --no-build --configuration Release --solution tests/PythonScriptRunner.SemE2E.slnf
+        run: dotnet test --no-build --configuration Release --solution tests/PythonScriptRunner.SemE2E.slnf --filter-not-trait "Category=Timing"
+
+      # The tests that assert a duration (timeout, cancellation, latency, p95) run alone and one at a time: next to the
+      # other test projects, the runner's shared CPU made them miss their limits by a few milliseconds (D-188).
+      - name: Test (timing)
+        if: runner.os == 'Linux'
+        run: |
+          for project in Core Dashboard Worker; do
+            dotnet test --no-build --configuration Release --project "tests/PythonScriptRunner.$project.Tests" --filter-trait "Category=Timing" --parallel none
+          done
 
       # The panel E2E tests run alone: containers starting or stopping in the other test projects change the host's network
       # interfaces, and Chromium then aborts requests in flight with ERR_NETWORK_CHANGED.
