@@ -38,6 +38,9 @@ public sealed class AccessibilityTests(PostgresFixture postgres, BrokerFixture b
 
     private static async Task ExpectAccessibleAsync(IPage page, string screen)
     {
+        // axe reads the colors as rendered: a dialog still fading in blends its labels with the backdrop.
+        await page.WaitForFunctionAsync(
+            "() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getComputedTiming().endTime === Infinity)");
         var result = await page.RunAxe();
         var violations = result.Violations
             .Where(v => v.Impact is "serious" or "critical")

@@ -23,7 +23,7 @@ public sealed partial class OperationTests(PostgresFixture postgres, BrokerFixtu
     [Fact]
     public async Task Spec008_AC06_Executor_RunsCalculoProgressao_AndSeesTheNodesChangeLiveUntilSucceeded()
     {
-        await StartAsync();
+        await StartAsync(s => s.Worker = false);
         await App.ImportFixtureAsync("calculo-progressao");
         var page = await OpenAsync(PanelUsers.Executor);
         await page.Context.AddInitScriptAsync(RecordStepStatuses);
@@ -36,6 +36,11 @@ public sealed partial class OperationTests(PostgresFixture postgres, BrokerFixtu
         await Expect(page).ToHaveURLAsync(RunUrl());
         var flow = page.GetByTestId("run-flow");
         await Expect(flow.Locator("[data-step]")).ToHaveCountAsync(4);
+        await Expect(flow.Locator("[data-step][data-status=Pending], [data-step][data-status=Queued]")).ToHaveCountAsync(4);
+
+        // The worker starts only once the page shows the run waiting: on a fast machine the first step could otherwise
+        // finish before the page loads, and its node would only ever be seen as Succeeded.
+        await App.Environment.StartHostAsync();
         await Expect(page.GetByTestId("run-status")).ToHaveAttributeAsync("data-status", "Succeeded", new LocatorAssertionsToHaveAttributeOptions { Timeout = 180_000 });
         await Expect(flow.Locator("[data-step][data-status=Succeeded]")).ToHaveCountAsync(4);
 

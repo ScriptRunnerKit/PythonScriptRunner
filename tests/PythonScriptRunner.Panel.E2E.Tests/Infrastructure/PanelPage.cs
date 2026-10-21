@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace PythonScriptRunner.Panel.E2E.Tests.Infrastructure;
 
 /// <summary>Interactions with the panel widgets that need more than a click (Monaco, Vuetify selects, Vue Flow handles).</summary>
@@ -47,10 +49,18 @@ public static class PanelPage
         await Expect(menu).ToBeVisibleAsync();
 
         // The menu renders only the items in view (virtual scroll): scroll until the option exists, then click it where it is
-        // (scrolling it into view again would make the list render it anew).
-        for (var i = 0; i < 20 && await item.CountAsync() == 0; i++)
+        // (scrolling it into view again would make the list render it anew). The menu may still be opening, so give each
+        // scroll time to render instead of spending all the attempts at once.
+        var deadline = Stopwatch.StartNew();
+        while (await item.CountAsync() == 0)
         {
+            if (deadline.Elapsed > TimeSpan.FromSeconds(15))
+            {
+                throw new TimeoutException($"The option '{option}' did not appear in the '{label}' menu.");
+            }
+
             await menu.EvaluateAsync("menu => [menu, ...menu.querySelectorAll('*')].filter(e => e.scrollHeight > e.clientHeight + 1).forEach(e => e.scrollTop += 120)");
+            await page.WaitForTimeoutAsync(100);
         }
 
         await item.DispatchEventAsync("click");
