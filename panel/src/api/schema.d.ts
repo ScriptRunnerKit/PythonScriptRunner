@@ -2240,6 +2240,7 @@ export interface operations {
             query?: {
                 search?: string;
                 status?: components["schemas"]["VersionStatus"];
+                pipelineKey?: string;
                 page?: number;
                 pageSize?: number;
             };

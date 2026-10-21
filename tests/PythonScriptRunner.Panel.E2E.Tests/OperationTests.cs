@@ -159,6 +159,41 @@ public sealed partial class OperationTests(PostgresFixture postgres, BrokerFixtu
         await App.PublishPipelineAsync("demorada", Scripts.SingleStep("dorme", 1, inputs));
     }
 
+    [Fact]
+    public async Task Spec008_AC27_AScreenWhoseCodeFailsToDownload_ReloadsOnce_AndThenShowsTheWarning()
+    {
+        await StartAsync(s => s.Worker = false);
+        var page = await OpenAsync(PanelUsers.Reader);
+        var runListRequests = 0;
+        await page.RouteAsync("**/assets/RunListView-*.js", async route =>
+        {
+            if (Interlocked.Increment(ref runListRequests) == 1)
+            {
+                await route.AbortAsync();
+            }
+            else
+            {
+                await route.ContinueAsync();
+            }
+        });
+
+        await GoToAsync(page, "execucoes");
+
+        await Expect(page.GetByTestId("runs-table")).ToBeVisibleAsync();
+        runListRequests.ShouldBe(2, "one failed download, then the reload");
+
+        // Failing again after the reload: the warning, without reloading in a loop.
+        await page.RouteAsync("**/assets/ScheduleListView-*.js", route => route.AbortAsync());
+        var loads = 0;
+        page.Load += (_, _) => Interlocked.Increment(ref loads);
+        await GoToAsync(page, "agendamentos");
+
+        await Expect(page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Não foi possível carregar esta tela" })).ToBeVisibleAsync();
+        await Expect(page).ToHaveURLAsync(App.UrlOf("falha-ao-carregar?rota=/agendamentos"));
+        await Expect(page.GetByTestId("reload")).ToBeVisibleAsync();
+        loads.ShouldBe(2, "the navigation and a single reload");
+    }
+
     private async Task<ILocator> OpenScheduleFormAsync(IPage page, string pipeline)
     {
         await GoToAsync(page, $"trilhas/{pipeline}");

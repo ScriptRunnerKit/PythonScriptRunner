@@ -2,6 +2,9 @@ import { createRouter, createWebHistory, type RouteLocationNormalized, type Rout
 import { basePath, type Role } from '@/api/client'
 import { useSession } from '@/stores/session'
 import AppShell from '@/components/layout/AppShell.vue'
+import LoadFailedView from '@/views/LoadFailedView.vue'
+import { safeReturn } from './paths'
+import { claimReload, isLoadError, sessionStore } from './reload'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -32,6 +35,13 @@ export const routes: RouteRecordRaw[] = [
     name: 'no-role',
     component: () => import('@/views/NoRoleView.vue'),
     meta: { public: true, title: 'auth.noRole.title' },
+  },
+  {
+    // Importada direto e pública: tem de abrir mesmo quando a rede não entrega os outros pedaços (AC-27).
+    path: '/falha-ao-carregar',
+    name: 'load-failed',
+    component: LoadFailedView,
+    meta: { public: true, title: 'loadFailed.title' },
   },
   {
     path: '/',
@@ -125,10 +135,7 @@ export const routes: RouteRecordRaw[] = [
   },
 ]
 
-/** Destino interno seguro para "voltar" depois do login (sem redirecionamento aberto). */
-export function safeReturn(value: unknown): string {
-  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : '/'
-}
+export { safeReturn } from './paths'
 
 /**
  * Entrada conforme o modo de acesso (spec 008 §0): login fixo → /entrar; host → loginUrl; filtro ou local negado →
@@ -175,5 +182,18 @@ export async function guard(to: RouteLocationNormalized) {
 export function createAppRouter() {
   const router = createRouter({ history: createWebHistory(basePath), routes })
   router.beforeEach(guard)
+  // Tela cujo código não baixou (rede oscilou, versão nova do painel): recarrega uma vez na rota pedida; se falhar de
+  // novo em até 10 s, mostra o aviso com Recarregar (D-163).
+  router.onError((error, to) => {
+    if (!isLoadError(error)) {
+      return
+    }
+
+    if (claimReload(to.fullPath, Date.now(), sessionStore())) {
+      window.location.assign(router.resolve(to.fullPath).href)
+    } else {
+      void router.replace({ name: 'load-failed', query: { rota: to.fullPath } })
+    }
+  })
   return router
 }
