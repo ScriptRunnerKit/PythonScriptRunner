@@ -569,6 +569,10 @@ the memory limit through cgroup v2 and the compose from `aspire publish`; the co
 dotnet test --project tests/PythonScriptRunner.Containers.Tests   # needs Docker
 ```
 
+When a container test fails, it saves the logs of its containers to `TestResults/container-logs/<test>/` next to the test
+assembly, and the end of the worker and dashboard logs goes to the test output. The CI uploads that folder as the
+`container-logs` artifact.
+
 The dashboard performance test uses about 200,000 runs; `PSR_PERF_RUNS_PER_DAY=50000` runs the full average volume (90
 days). The dashboard's OpenAPI document is compared with
 `tests/PythonScriptRunner.Dashboard.Tests/Snapshots/openapi-v1.verified.json`. After you review an intended change,

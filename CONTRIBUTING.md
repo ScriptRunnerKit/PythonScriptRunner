@@ -65,7 +65,8 @@ A pull request is merged only when every job of `.github/workflows/ci.yml` is gr
   them in an incompatible way needs a new schema or protocol version.
 - **Changelog:** user-visible changes get a line in [CHANGELOG.md](CHANGELOG.md), under the version being prepared.
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `test:`,
-  `build:`, `ci:`, `chore:`).
+  `build:`, `ci:`, `chore:`). Commit messages and pull requests describe what changed and why, so that they read on their
+  own; link the issue when there is one.
 
 ## Releases
 

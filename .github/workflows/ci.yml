@@ -193,6 +193,15 @@ jobs:
           PSR_TEST_WORKER_IMAGE: psr-worker:ci
           PSR_TEST_DASHBOARD_IMAGE: psr-dashboard:ci
 
+      # A failed test keeps the logs of its containers (hosts, PostgreSQL, RabbitMQ, compose services).
+      - name: Upload container logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: container-logs
+          path: tests/PythonScriptRunner.Containers.Tests/bin/Debug/net10.0/TestResults/container-logs/
+          if-no-files-found: ignore
+
   # Spec 009, AC-1/AC-2: the Aspire AppHost brings everything up and the author runs CS-1 and CS-2.
   apphost:
     name: Aspire AppHost
