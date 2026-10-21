@@ -5,6 +5,19 @@ All notable changes to PythonScriptRunner are documented in this file. The forma
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The NuGet packages and the container images share one
 version; the `psrunner` SDK has its own version on PyPI.
 
+## [Unreleased]
+
+### Added
+
+- Guides in English and Portuguese (`guides/`): getting started and the ways to use the library, stages, pipelines,
+  the Python SDK, persistence, queue and scheduling, the dashboard, hosting, a configuration reference and how it
+  works.
+
+### Changed
+
+- The README covers every capability with short examples and links to the guides. The `psrunner` README, the PyPI
+  page, is now a complete reference of the SDK.
+
 ## [0.1.0] - 2026-10-21
 
 The first release.
@@ -58,4 +71,5 @@ The first release.
 |---------------------------------------|------|----------|------------|--------|
 | 0.1.0 | 10 | 1 | 0.1.x | 3.10–3.13 |
 
+[Unreleased]: https://github.com/ScriptRunnerKit/PythonScriptRunner/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ScriptRunnerKit/PythonScriptRunner/releases/tag/v0.1.0
