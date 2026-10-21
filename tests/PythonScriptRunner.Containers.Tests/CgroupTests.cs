@@ -8,7 +8,7 @@ namespace PythonScriptRunner.Containers.Tests;
 /// Spec 001, AC-30 (D-180): with a writable cgroup v2 (a privileged container) the memory limit of an attempt is the
 /// memory really used, enforced by the kernel, and the numeric libraries keep their threads.
 /// </summary>
-public sealed class CgroupTests(HostStack stack)
+public sealed class CgroupTests(HostStack stack) : ContainerTest
 {
     private static readonly Dictionary<string, string> Stages = new()
     {

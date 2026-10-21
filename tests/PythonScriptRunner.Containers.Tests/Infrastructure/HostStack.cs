@@ -37,10 +37,12 @@ public sealed class HostStack : IAsyncLifetime
         _postgres = new PostgreSqlBuilder("postgres:16-alpine")
             .WithNetwork(_network).WithNetworkAliases("pg")
             .WithUsername("psr").WithPassword("psr").WithDatabase("psr")
+            .WithOutputConsumer(ContainerLogs.CaptureShared("postgres"))
             .Build();
         _rabbit = new RabbitMqBuilder("rabbitmq:3.13-alpine")
             .WithNetwork(_network).WithNetworkAliases("rabbit")
             .WithUsername("psr").WithPassword("psr")
+            .WithOutputConsumer(ContainerLogs.CaptureShared("rabbitmq"))
             .Build();
         var images = Task.WhenAll(HostImages.ResolveAsync(HostImages.Worker, Ct), HostImages.ResolveAsync(HostImages.Dashboard, Ct));
         await Task.WhenAll(_postgres.StartAsync(Ct), _rabbit.StartAsync(Ct), images);
@@ -66,12 +68,15 @@ public sealed class HostStack : IAsyncLifetime
     /// <summary>
     /// A host container (not started) with migrations on, waiting until <c>/health/ready</c> answers 200;
     /// <paramref name="privileged"/> runs it privileged and as root, so it owns a writable <c>/sys/fs/cgroup</c>: a
-    /// delegable cgroup v2 (D-180), like a systemd service with <c>Delegate=yes</c>.
+    /// delegable cgroup v2 (D-180), like a systemd service with <c>Delegate=yes</c>. Its output is kept for the report of a
+    /// failed test (<see cref="ContainerLogs"/>).
     /// </summary>
     public IContainer Host(string image, string database, IReadOnlyDictionary<string, string>? environment = null, bool privileged = false)
     {
+        var logName = image == WorkerImage ? "worker" : image == DashboardImage ? "dashboard" : "host";
         var builder = new ContainerBuilder(image)
             .WithNetwork(_network)
+            .WithOutputConsumer(ContainerLogs.Capture(logName))
             .WithPrivileged(privileged)
             .WithEnvironment("ConnectionStrings__psr", $"Host=pg;Database={database};Username=psr;Password=psr")
             .WithEnvironment("ConnectionStrings__rabbitmq", "amqp://psr:psr@rabbit:5672/")

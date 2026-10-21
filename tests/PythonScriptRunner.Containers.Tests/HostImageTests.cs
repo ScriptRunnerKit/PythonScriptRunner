@@ -7,7 +7,7 @@ using PythonScriptRunner.EntityFrameworkCore;
 namespace PythonScriptRunner.Containers.Tests;
 
 /// <summary>Spec 009: the worker and dashboard images as they run in production.</summary>
-public sealed class HostImageTests(HostStack stack)
+public sealed class HostImageTests(HostStack stack) : ContainerTest
 {
     private const long MaxWorkerImageBytes = 400L * 1024 * 1024;
 
