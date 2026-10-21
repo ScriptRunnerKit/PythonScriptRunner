@@ -14,6 +14,7 @@
     <Project Path="src/PythonScriptRunner.Worker/PythonScriptRunner.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PythonScriptRunner.Containers.Tests/PythonScriptRunner.Containers.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Core.Tests/PythonScriptRunner.Core.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.Dashboard.Tests/PythonScriptRunner.Dashboard.Tests.csproj" />
     <Project Path="tests/PythonScriptRunner.EntityFrameworkCore.Tests/PythonScriptRunner.EntityFrameworkCore.Tests.csproj" />

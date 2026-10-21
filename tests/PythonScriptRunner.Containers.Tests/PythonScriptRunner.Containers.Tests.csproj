@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Password hashes of the fixed login and the list of EF migrations. -->
+    <ProjectReference Include="..\..\src\PythonScriptRunner.Dashboard\PythonScriptRunner.Dashboard.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="DotNet.Testcontainers.Builders" />
+    <Using Include="DotNet.Testcontainers.Containers" />
+    <Using Include="Shouldly" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>

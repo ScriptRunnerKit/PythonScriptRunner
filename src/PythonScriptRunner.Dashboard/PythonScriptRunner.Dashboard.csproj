@@ -26,7 +26,8 @@
   <!--
     The panel (spec 008) is embedded as wwwroot (D-155): Release builds and packs run `npm ci` + `npm run build` in
     panel/ and embed panel/dist; other builds embed the placeholder page in wwwroot/, so Node is only needed to pack.
-    Force either way with -p:PsrBuildPanel=true|false.
+    Force either way with -p:PsrBuildPanel=true|false. -p:PsrPanelPrebuilt=true embeds an existing panel/dist without
+    running npm (the image build compiles the panel in a Node stage).
   -->
   <PropertyGroup>
     <PsrPanelRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'panel'))</PsrPanelRoot>
@@ -38,7 +39,7 @@
     <PsrPanelSources Include="$(PsrPanelRoot)src\**\*;$(PsrPanelRoot)public\**\*;$(PsrPanelRoot)index.html;$(PsrPanelRoot)package-lock.json;$(PsrPanelRoot)vite.config.ts" Exclude="$(PsrPanelRoot)src\**\*.spec.ts" />
   </ItemGroup>
 
-  <Target Name="PsrBuildPanel" Condition="'$(PsrBuildPanel)' == 'true'" Inputs="@(PsrPanelSources)" Outputs="$(PsrPanelRoot)dist\index.html">
+  <Target Name="PsrBuildPanel" Condition="'$(PsrBuildPanel)' == 'true' and '$(PsrPanelPrebuilt)' != 'true'" Inputs="@(PsrPanelSources)" Outputs="$(PsrPanelRoot)dist\index.html">
     <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(PsrPanelRoot)" Condition="!Exists('$(PsrPanelRoot)node_modules\.package-lock.json')" />
     <Exec Command="npm run build" WorkingDirectory="$(PsrPanelRoot)" />
   </Target>
