@@ -1,0 +1,53 @@
+# Weekly dependency updates (spec 009, D-184): one grouped pull request per ecosystem for minor and patch versions;
+# majors arrive one by one so they can be reviewed against the decisions that pinned them.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      aspire:
+        patterns: ["Aspire.*"]
+        update-types: [minor, patch]
+      dotnet:
+        patterns: ["Microsoft.*", "System.*", "Npgsql*"]
+        update-types: [minor, patch]
+      testing:
+        patterns: ["xunit*", "Shouldly", "Testcontainers*", "Microsoft.Playwright", "Deque.*"]
+        update-types: [minor, patch]
+      other:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /panel
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      panel:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: uv
+    directory: /python/psrunner
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      psrunner-dev:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
