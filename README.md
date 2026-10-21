@@ -283,7 +283,13 @@ dotnet test --project tests/PythonScriptRunner.Panel.E2E.Tests --no-build   # PS
 ```
 
 Quando um teste falha, o *trace* do Playwright fica em `TestResults/traces` ao lado do assembly de testes
-(`npx playwright show-trace <arquivo>.zip`).
+(`npx playwright show-trace <arquivo>.zip`). Rode o E2E sozinho: contêineres subindo ou parando em outros projetos de
+teste mudam as interfaces de rede e o Chromium aborta requisições com `ERR_NETWORK_CHANGED`. Para todo o resto de uma vez,
+use o filtro de solução sem o E2E (é o que o CI faz):
+
+```bash
+dotnet test --solution tests/PythonScriptRunner.SemE2E.slnf
+```
 
 O teste de desempenho do painel usa ~200 mil execuções; `PSR_PERF_RUNS_PER_DAY=50000` roda o volume médio completo (90 dias).
 O documento OpenAPI do painel é comparado com `tests/PythonScriptRunner.Dashboard.Tests/Snapshots/openapi-v1.verified.json`;

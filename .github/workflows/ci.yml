@@ -62,7 +62,13 @@ jobs:
       # Testcontainers (Docker); GitHub's Windows runners cannot run Linux containers, so Windows runs the Core tests only.
       - name: Test
         if: runner.os == 'Linux'
-        run: dotnet test --no-build --configuration Release
+        run: dotnet test --no-build --configuration Release --solution tests/PythonScriptRunner.SemE2E.slnf
+
+      # The panel E2E tests run alone: containers starting or stopping in the other test projects change the host's network
+      # interfaces, and Chromium then aborts requests in flight with ERR_NETWORK_CHANGED.
+      - name: Test (panel E2E)
+        if: runner.os == 'Linux'
+        run: dotnet test --no-build --configuration Release --project tests/PythonScriptRunner.Panel.E2E.Tests
 
       - name: Upload Playwright traces
         if: failure() && runner.os == 'Linux'
