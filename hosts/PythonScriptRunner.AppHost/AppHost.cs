@@ -53,6 +53,21 @@ for (var i = 0; i < users.Length; i++)
         .WithEnvironment($"PythonScriptRunner__Dashboard__Login__Users__{i}__PasswordHash", passwordHash);
 }
 
+// No docker-compose (`aspire publish`): o próprio PostgreSQL cria o banco psr (em dev o Aspire o cria), imagens do GHCR na
+// versão PSR_VERSION, reinício até o banco aceitar conexões e o painel numa porta fixa (PSR_DASHBOARD_PORT, padrão 8080).
+postgres.PublishAsDockerComposeService((_, service) => service.Environment["POSTGRES_DB"] = "psr");
+worker.PublishAsDockerComposeService((_, service) =>
+{
+    service.Image = "ghcr.io/net0well/psr-worker:${PSR_VERSION:-latest}";
+    service.Restart = "unless-stopped";
+});
+dashboard.PublishAsDockerComposeService((_, service) =>
+{
+    service.Image = "ghcr.io/net0well/psr-dashboard:${PSR_VERSION:-latest}";
+    service.Restart = "unless-stopped";
+    service.Ports = ["${PSR_DASHBOARD_PORT:-8080}:8080"];
+});
+
 if (builder.ExecutionContext.IsRunMode)
 {
     worker.WithEnvironment("PythonScriptRunner__PsrunnerRequirement", psrunner);

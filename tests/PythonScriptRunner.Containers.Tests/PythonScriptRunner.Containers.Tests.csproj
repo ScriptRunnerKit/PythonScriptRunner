@@ -6,6 +6,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Dashboard API helpers shared with the Aspire AppHost tests (import, publication and runs of the fixtures). -->
+    <Compile Include="..\PythonScriptRunner.AppHost.Tests\Infrastructure\PanelApi.cs" Link="Infrastructure\PanelApi.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="DotNet.Testcontainers.Builders" />
     <Using Include="DotNet.Testcontainers.Containers" />
     <Using Include="Shouldly" />
