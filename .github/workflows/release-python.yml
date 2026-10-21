@@ -1,0 +1,45 @@
+name: Release (psrunner)
+
+# A tag python/vX.Y.Z publishes the psrunner SDK to PyPI with trusted publishing (OIDC, no stored token; spec 009,
+# AC-6). The SDK has its own version, compatible with protocol 1 while it is 1.x; the CI must be green on the commit.
+on:
+  push:
+    tags: ['python/v*']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: PyPI
+    needs: ci
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/psrunner/
+    permissions:
+      id-token: write
+    defaults:
+      run:
+        working-directory: python/psrunner
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+
+      - name: Check the version
+        run: |
+          expected="${GITHUB_REF_NAME#python/v}"
+          actual=$(uv run --no-project python -c "exec(open('src/psrunner/_version.py').read()); print(__version__)")
+          test "$actual" = "$expected" || { echo "src/psrunner/_version.py has $actual, the tag says $expected"; exit 1; }
+
+      - name: Build
+        run: uv build --out-dir dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/psrunner/dist
