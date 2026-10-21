@@ -1,6 +1,6 @@
 // Orçamento do bundle inicial (spec 008): ≤ 500 KB gzip para os arquivos que index.html carrega.
 // Monaco e Vue Flow ficam em chunks carregados sob demanda e não entram na conta.
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 
@@ -19,4 +19,13 @@ console.log(`${(total / 1024).toFixed(1).padStart(8)} KB  inicial (gzip), limite
 if (total > limit) {
   console.error('O bundle inicial passou do orçamento da spec 008.')
   process.exit(1)
+}
+
+// A CSP do painel só aceita `data:` em imagens: uma fonte embutida seria bloqueada pelo navegador.
+const css = (await readdir(`${dist}assets`)).filter((f) => f.endsWith('.css'))
+for (const file of css) {
+  if ((await readFile(`${dist}assets/${file}`, 'utf8')).includes('url(data:font/')) {
+    console.error(`assets/${file} embute uma fonte como data:, que a CSP do painel bloqueia.`)
+    process.exit(1)
+  }
 }

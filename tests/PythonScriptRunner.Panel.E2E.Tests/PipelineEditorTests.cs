@@ -144,6 +144,27 @@ public sealed class PipelineEditorTests(PostgresFixture postgres, BrokerFixture 
         pipeline.Versions.Select(v => (v.Version, v.Status)).ShouldBe([(2, VersionStatus.Draft), (1, VersionStatus.Published)], ignoreOrder: true);
     }
 
+    [Fact]
+    public async Task Spec008_AC03_Organize_KeepsEveryConnection_IncludingThePipelineOutputs()
+    {
+        await StartAsync(s => s.Worker = false);
+        await App.ImportFixtureAsync("calculo-progressao");
+        await App.Host.Admin.CreatePipelineDraftFromAsync("calculo-progressao", 1, PsrEnvironment.Author, Ct);
+        var page = await OpenAsync(PanelUsers.Author);
+        await GoToAsync(page, "trilhas/calculo-progressao/editar");
+        var canvas = page.GetByTestId("pipeline-canvas");
+        var edges = canvas.Locator(".vue-flow__edge");
+        var outputs = canvas.Locator(".vue-flow__edge[data-id^='out:']");
+        await Expect(outputs).ToHaveCountAsync(4);
+        var before = await edges.CountAsync();
+
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Organizar" }).ClickAsync();
+
+        await Expect(page.GetByTestId("dirty")).ToBeVisibleAsync();
+        await Expect(outputs).ToHaveCountAsync(4);
+        await Expect(edges).ToHaveCountAsync(before);
+    }
+
     private static ILocator Step(ILocator canvas, string key) => canvas.Locator($"[data-step={key}]");
 
     private static ILocator In(ILocator node, string name) => node.Locator($"[data-handle='in:{name}']");

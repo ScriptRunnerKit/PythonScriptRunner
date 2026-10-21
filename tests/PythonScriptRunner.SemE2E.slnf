@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "../PythonScriptRunner.slnx",
+    "projects": [
+      "tests/PythonScriptRunner.Core.Tests/PythonScriptRunner.Core.Tests.csproj",
+      "tests/PythonScriptRunner.Dashboard.Tests/PythonScriptRunner.Dashboard.Tests.csproj",
+      "tests/PythonScriptRunner.EntityFrameworkCore.Tests/PythonScriptRunner.EntityFrameworkCore.Tests.csproj",
+      "tests/PythonScriptRunner.RabbitMQ.Tests/PythonScriptRunner.RabbitMQ.Tests.csproj",
+      "tests/PythonScriptRunner.Worker.Tests/PythonScriptRunner.Worker.Tests.csproj"
+    ]
+  }
+}

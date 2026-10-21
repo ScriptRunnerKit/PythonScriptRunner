@@ -66,7 +66,13 @@ function connectStart(params: { event?: MouseEvent | TouchEvent } & OnConnectSta
   }
 }
 
-function isValidConnection(connection: Connection): boolean {
+function isValidConnection(connection: Connection | Edge): boolean {
+  // O Vue Flow também valida as arestas recebidas por props (elas têm id); essas vêm do modelo, que já é válido, e
+  // "ligar numa saída existente" só é proibido para uma conexão nova (sem isso, Organizar sumia com as saídas).
+  if ('id' in connection) {
+    return true
+  }
+
   return (
     props.editable &&
     Boolean(connection.sourceHandle && connection.targetHandle) &&

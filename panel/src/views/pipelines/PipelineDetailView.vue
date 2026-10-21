@@ -347,7 +347,7 @@ const exportUrl = (v: number) => `${apiBase}/pipelines/${encodeURIComponent(key.
                 t('common.save')
               }}</v-btn>
               <div class="text-subtitle-2 mt-6 mb-2">{{ t('pipelines.settings.retention') }}</div>
-              <v-row dense>
+              <v-row density="compact">
                 <v-col cols="6">
                   <v-text-field
                     v-model="settings.artifactRetentionDays"

@@ -651,7 +651,7 @@ function finishPublish() {
       >{{ publishError }}</v-alert
     >
 
-    <v-row v-if="form" dense>
+    <v-row v-if="form" density="compact">
       <v-col cols="12" lg="2">
         <v-card :title="t('pipelines.editor.palette')" density="compact">
           <v-card-text class="pb-0">

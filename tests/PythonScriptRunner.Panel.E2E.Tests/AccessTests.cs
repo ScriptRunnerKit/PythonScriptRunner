@@ -131,11 +131,22 @@ public sealed partial class AccessTests(PostgresFixture postgres, BrokerFixture 
     [Fact]
     public async Task Spec008_AC12_FollowsTheDarkSystemTheme_AndKeepsTheManualChoiceAfterReload()
     {
-        await StartAsync();
+        await StartAsync(s => s.Worker = false);
+        await App.ImportFixtureAsync("calculo-progressao");
         var page = await OpenAsync(PanelUsers.Reader, o => o.ColorScheme = ColorScheme.Dark);
-        await GoToAsync(page, string.Empty);
+        await GoToAsync(page, "trilhas/calculo-progressao");
         var app = page.Locator(".v-application");
         await Expect(app).ToHaveClassAsync(new Regex(@"\bv-theme--dark\b"));
+
+        // The canvas controls and minimap follow the theme (Vue Flow styles them light by default).
+        await Expect(page.Locator(".vue-flow__minimap")).ToBeVisibleAsync();
+        var surface = await page.Locator(".flow-canvas").EvaluateAsync<string>("e => getComputedStyle(e).backgroundColor");
+        foreach (var part in new[] { ".vue-flow__controls-button", ".vue-flow__minimap" })
+        {
+            (await page.Locator(part).First.EvaluateAsync<string>("e => getComputedStyle(e).backgroundColor")).ShouldBe(surface, part);
+        }
+
+        await GoToAsync(page, string.Empty);
 
         await page.GetByTestId("theme-menu").ClickAsync();
         await page.GetByTestId("theme-light").ClickAsync();

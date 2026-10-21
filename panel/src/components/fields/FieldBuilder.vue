@@ -132,7 +132,7 @@ function setColumn(index: number, field: FieldDefinition, column: number, change
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
-          <v-row dense>
+          <v-row density="compact">
             <v-col cols="12" md="5">
               <v-text-field
                 :model-value="field.name"

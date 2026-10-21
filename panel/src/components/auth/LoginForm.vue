@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { VTextField } from 'vuetify/components'
 import { useSession } from '@/stores/session'
 
 /** Login fixo (D-129): nome + senha; erro genérico (D-135) e contagem regressiva no 429 (D-146). */
@@ -14,6 +15,7 @@ const password = ref('')
 const busy = ref(false)
 const invalid = ref(false)
 const wait = ref(0)
+const nameField = ref<VTextField | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
 
 const canSubmit = computed(() => !busy.value && wait.value === 0 && name.value.trim() !== '' && password.value !== '')
@@ -56,6 +58,14 @@ async function submit() {
   }
 }
 
+// Na página o foco vai ao usuário já ao montar: o autofocus do Vuetify espera ~50 ms e tiraria o foco de quem já começou a
+// digitar. No diálogo de sessão expirada (usuário travado) fica o autofocus da senha, que espera a transição do diálogo.
+onMounted(() => {
+  if (!props.lockedName) {
+    nameField.value?.focus()
+  }
+})
+
 onBeforeUnmount(() => timer && clearInterval(timer))
 </script>
 
@@ -76,13 +86,13 @@ onBeforeUnmount(() => timer && clearInterval(timer))
       {{ t('auth.login.throttled', { seconds: wait }) }}
     </v-alert>
     <v-text-field
+      ref="nameField"
       v-model="name"
       :label="t('auth.login.name')"
       autocomplete="username"
       :readonly="Boolean(lockedName)"
       prepend-inner-icon="mdi-account"
       name="name"
-      autofocus
     />
     <v-text-field
       v-model="password"

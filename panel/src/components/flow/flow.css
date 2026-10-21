@@ -120,6 +120,34 @@ button.step-node__port-label {
   cursor: not-allowed;
 }
 
+/* Controles e minimapa seguem o tema do painel: os estilos do Vue Flow têm cores claras fixas. */
+.flow-canvas .vue-flow__controls {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.flow-canvas .vue-flow__controls-button {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.flow-canvas .vue-flow__controls-button:hover {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.flow-canvas .vue-flow__minimap {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.flow-canvas .vue-flow__minimap-mask {
+  fill: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.flow-canvas .vue-flow__minimap-node {
+  fill: rgba(var(--v-theme-on-surface), 0.3);
+}
+
 .flow-canvas .vue-flow__edge.edge--implicit .vue-flow__edge-path {
   stroke-dasharray: 6 4;
   opacity: 0.6;

@@ -17,6 +17,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     chunkSizeWarningLimit: 4096,
+    // Fontes sempre como arquivo: a CSP do painel (default-src 'self') bloqueia fontes `data:`, e o Vite embutiria os
+    // subconjuntos pequenos da Roboto.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf|eot)$/i.test(file) ? false : undefined),
   },
   worker: {
     format: 'es',
