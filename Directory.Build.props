@@ -11,8 +11,17 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <PropertyGroup Label="Version">
+    <!-- Same version for every package, from the tag vX.Y.Z (MinVer; D-179). python/vX.Y.Z tags belong to psrunner. -->
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup Label="Package">
-    <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>net0well</Authors>
     <Copyright>Copyright (c) 2026 net0well</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
