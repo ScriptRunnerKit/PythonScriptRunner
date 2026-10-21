@@ -33,8 +33,9 @@ public static class PsrEntityFrameworkCoreExtensions
         var services = builder.Services;
         services.AddSingleton(options);
         services.TryAddSingleton<PsrDataSource>();
-        services.AddPooledDbContextFactory<PsrDbContext>((provider, db) =>
-            db.UseNpgsql(provider.GetRequiredService<PsrDataSource>().DataSource, PsrDbContextOptions.ConfigureNpgsql));
+        services.AddPooledDbContextFactory<PsrDbContext>((provider, db) => db
+            .UseNpgsql(provider.GetRequiredService<PsrDataSource>().DataSource, PsrDbContextOptions.ConfigureNpgsql)
+            .ConfigureWarnings(PsrDbContextOptions.ConfigureWarnings));
 
         services.TryAddSingleton<EfCatalog>();
         services.Replace(ServiceDescriptor.Singleton<ICatalog>(provider => provider.GetRequiredService<EfCatalog>()));

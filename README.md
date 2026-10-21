@@ -166,7 +166,8 @@ RunHandle run = await queue.EnqueuePipelineAsync("progression-calc", new { a1 = 
 - **External systems:** the public `StartPipelineRun` command (exchange `psr.public`) starts pipelines. The `run.*` and
   `step.*` events (exchange `psr.events`) report progress and outputs. The contracts are in `schemas/messages`.
 - **Observability:** `ActivitySource` and `Meter` named `PythonScriptRunner`; the `traceparent` follows the run all the
-  way to the worker.
+  way to the worker. The relay polls the outbox every 250 ms, so the library logs its SQL commands at `Debug`
+  (`Microsoft.EntityFrameworkCore.Database.Command`).
 
 `hosts/PythonScriptRunner.WorkerHost` is a ready-made worker. It provides `/health/live`, `/health/ready`, JSON logs and
 OTLP, and is configured with environment variables:
@@ -330,6 +331,7 @@ docker run -d --read-only \
 | `Oidc__Authority`, `Oidc__ClientId`, `Oidc__ClientSecret` | dashboard | optional: turns on OpenID Connect |
 | `Dashboard__PathPrefix` | dashboard | `/psr` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | both | `http://otel-collector:4317` |
+| `Serilog__MinimumLevel__Override__<category>` | both | `Information` for `Microsoft.AspNetCore` brings back the request logs (default `Warning`) |
 
 ### Volumes and read-only file system
 
