@@ -381,7 +381,7 @@ function retry(): Schemas['RetryPolicy'] {
                 @update:model-value="(v: string) => form && (form.memoryLimitMb = v === '' ? null : Number(v))"
               />
               <div class="text-subtitle-2 mt-4 mb-2">{{ t('stages.editor.retry') }}</div>
-              <v-row dense>
+              <v-row density="compact">
                 <v-col cols="4">
                   <v-text-field
                     :model-value="retry().maxAttempts"

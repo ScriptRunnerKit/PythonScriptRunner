@@ -64,7 +64,7 @@ onMounted(() => load(true))
     <PageHeader :title="t('audit.title')" :subtitle="t('audit.subtitle')" />
     <v-card class="mb-4">
       <v-card-text>
-        <v-row dense>
+        <v-row density="compact">
           <v-col cols="12" md="2"
             ><v-text-field v-model="filters.actor" :label="t('audit.actor')" hide-details clearable
           /></v-col>

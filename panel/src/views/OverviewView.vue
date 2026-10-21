@@ -46,7 +46,7 @@ function runTitle(run: Schemas['RunSummary']) {
       <v-btn variant="text" prepend-icon="mdi-refresh" :loading="busy" @click="load">{{ t('common.refresh') }}</v-btn>
     </PageHeader>
 
-    <v-row dense>
+    <v-row density="compact">
       <v-col v-for="counter in counters" :key="counter.status" cols="6" md="4" lg="2">
         <v-card variant="tonal" :color="statusColor(counter.status)" :data-counter="counter.status">
           <v-card-text>

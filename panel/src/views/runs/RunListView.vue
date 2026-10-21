@@ -106,7 +106,7 @@ function onScroll({ done: finish }: { done: (status: 'ok' | 'empty' | 'error') =
     <PageHeader :title="t('runs.title')" :subtitle="t('runs.subtitle')" />
     <v-card class="mb-4">
       <v-card-text>
-        <v-row dense>
+        <v-row density="compact">
           <v-col cols="12" md="3"
             ><v-text-field v-model="filters.pipelineKey" :label="t('runs.filters.pipeline')" clearable hide-details
           /></v-col>
