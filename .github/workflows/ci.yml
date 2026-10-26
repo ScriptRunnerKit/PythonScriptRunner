@@ -38,7 +38,7 @@ jobs:
           global-json-file: global.json
 
       # The integration tests build the psrunner wheel and create real Python environments with uv.
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
 
       # The Release build embeds the Vue panel (npm ci + npm run build in panel/; D-155).
       - uses: actions/setup-node@v7
@@ -120,7 +120,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
 
       - uses: actions/setup-node@v7
         with:
@@ -215,7 +215,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
 
       # The panel runs as a Vite app inside the AppHost.
       - uses: actions/setup-node@v7
@@ -284,7 +284,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           python-version: ${{ matrix.python }}
 
